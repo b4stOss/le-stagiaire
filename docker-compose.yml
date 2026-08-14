@@ -1,0 +1,16 @@
+services:
+  db:
+    image: pgvector/pgvector:pg17
+    container_name: rapport-db
+    environment:
+      POSTGRES_USER: rapport
+      POSTGRES_PASSWORD: rapport
+      POSTGRES_DB: rapport
+    ports:
+      # 5433 on the host to avoid clashing with any local Postgres on 5432
+      - "5433:5432"
+    volumes:
+      - rapport_pgdata:/var/lib/postgresql/data
+
+volumes:
+  rapport_pgdata:

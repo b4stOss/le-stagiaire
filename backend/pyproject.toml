@@ -1,0 +1,23 @@
+[project]
+name = "rapport-backend"
+version = "0.1.0"
+description = "Analyst agent over annual reports, built on Mistral's platform"
+requires-python = ">=3.12"
+dependencies = [
+    "mistralai>=2.9",
+    "fastapi>=0.115",
+    "uvicorn>=0.30",
+    "psycopg[binary]>=3.2",
+    "pgvector>=0.3",
+    "pydantic>=2.8",
+    "pydantic-settings>=2.4",
+    "pypdf>=6.16.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+]
+
+[tool.uv]
+package = false

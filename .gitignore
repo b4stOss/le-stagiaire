@@ -1,0 +1,18 @@
+# Secrets
+.env
+
+# Data (large binaries and derived OCR caches stay out of the repo)
+data/filings/
+data/ocr/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Node
+node_modules/
+dist/
+
+# OS / editors
+.DS_Store
