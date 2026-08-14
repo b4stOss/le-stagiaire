@@ -30,7 +30,7 @@ Pipeline (all models served by Mistral's La Plateforme):
 4. **Agent**: a tool-calling loop around a `search_filings` tool. Simple questions resolve in one search; comparisons decompose into several. System prompt enforces grounding, citations, and refusal. The API streams the whole run over SSE: each search as it fires, then the answer token by token.
 5. **Evaluation**: a hand-verified golden set of ~30 questions across four categories (numeric extraction, synthesis, cross-document comparison, unanswerable). Scored with exact numeric matching plus an LLM judge for text answers and citation accuracy. Results are displayed in the app.
 
-Backend: Python / FastAPI, direct `mistralai` SDK calls (no RAG framework). Models: `mistral-medium-latest` (agent), `mistral-small-latest` (eval judge), `mistral-embed`, `mistral-ocr-latest`. Frontend: React. Deployment: Railway.
+Backend: Python / FastAPI, direct `mistralai` SDK calls (no RAG framework). Models: `mistral-medium-latest` (agent), `mistral-small-latest` (eval judge), `mistral-embed`, `mistral-ocr-latest`. Frontend: React, served by the same FastAPI process. Deployment: one Docker Compose stack (app plus Postgres/pgvector) behind Caddy, self-hosted; the public demo is rate-limited and capped daily, since every question spends real tokens.
 
 ## Deliberate non-choices
 
