@@ -1,49 +1,143 @@
 {
-  "run_at": "2026-08-14 14:18",
+  "run_at": "2026-08-14 14:20",
   "summary": {
     "overall": {
-      "passed": 2,
-      "total": 2,
+      "passed": 13,
+      "total": 13,
       "pct": 100
     },
     "by_category": {
       "numeric": {
-        "passed": 1,
-        "total": 1,
+        "passed": 7,
+        "total": 7,
         "pct": 100
       },
       "synthesis": {
         "passed": 1,
         "total": 1,
         "pct": 100
+      },
+      "comparison": {
+        "passed": 2,
+        "total": 2,
+        "pct": 100
+      },
+      "unanswerable": {
+        "passed": 3,
+        "total": 3,
+        "pct": 100
       }
     },
     "citation_accuracy": {
-      "passed": 2,
-      "total": 2,
+      "passed": 10,
+      "total": 10,
       "pct": 100
     },
     "retrieval_recall": {
-      "passed": 2,
-      "total": 2,
+      "passed": 10,
+      "total": 10,
       "pct": 100
     },
     "correct_abstention": {
-      "passed": 0,
-      "total": 0,
-      "pct": null
+      "passed": 3,
+      "total": 3,
+      "pct": 100
     },
     "false_refusal": {
       "count": 0,
-      "total": 2
+      "total": 10
     },
     "verified_share": {
-      "passed": 0,
-      "total": 2,
-      "pct": 0
+      "passed": 3,
+      "total": 13,
+      "pct": 23
     }
   },
   "questions": [
+    {
+      "id": "num-01",
+      "category": "numeric",
+      "question": "What was Stellantis' net revenue in 2025?",
+      "verified": false,
+      "answer": "Stellantis' net revenue in 2025 was **€153,508 million** [c954, c1589, c1590].",
+      "n_searches": 1,
+      "tokens": 3888,
+      "duration_s": 2.75,
+      "passed": true,
+      "citation_ok": true,
+      "retrieval_recall": true,
+      "abstained": false
+    },
+    {
+      "id": "num-02",
+      "category": "numeric",
+      "question": "What net result did Stellantis report for 2025?",
+      "verified": false,
+      "answer": "Stellantis reported a **net loss of €22,332 million** for 2025 [c964][c954][c1742].",
+      "n_searches": 1,
+      "tokens": 5053,
+      "duration_s": 3.24,
+      "passed": true,
+      "citation_ok": true,
+      "retrieval_recall": true,
+      "abstained": false
+    },
+    {
+      "id": "num-03",
+      "category": "numeric",
+      "question": "How much did ASML spend on R&D in 2025?",
+      "verified": false,
+      "answer": "ASML spent **€4.7 billion** on R&D in 2025 [c1930].",
+      "n_searches": 1,
+      "tokens": 4331,
+      "duration_s": 2.28,
+      "passed": true,
+      "citation_ok": true,
+      "retrieval_recall": true,
+      "abstained": false
+    },
+    {
+      "id": "num-04",
+      "category": "numeric",
+      "question": "Quel est le ratio CET1 de BNP Paribas au 31 décembre 2025 ?",
+      "verified": false,
+      "answer": "Le ratio CET1 de BNP Paribas au 31 décembre 2025 est de **12,6 %** [c5884] [c5490] (ou **12,61 %** selon une autre mention [c6004]).",
+      "n_searches": 1,
+      "tokens": 8335,
+      "duration_s": 3.38,
+      "passed": true,
+      "citation_ok": true,
+      "retrieval_recall": true,
+      "abstained": false
+    },
+    {
+      "id": "num-05",
+      "category": "numeric",
+      "question": "Quelle a été la production combinée d'hydrocarbures de TotalEnergies en 2025, en kbep/j ?",
+      "verified": false,
+      "answer": "La production combinée d'hydrocarbures de TotalEnergies en 2025 a été de **2 529 kbep/j** [c3083][c3082][c2863][c3093][c3030].",
+      "n_searches": 1,
+      "tokens": 4887,
+      "duration_s": 66.27,
+      "passed": true,
+      "citation_ok": true,
+      "retrieval_recall": true,
+      "abstained": false
+    },
+    {
+      "id": "num-06",
+      "category": "numeric",
+      "question": "Quelle est la marge d'intérêts de BNP Paribas pour l'exercice 2025 ?",
+      "verified": false,
+      "answer": "La marge d'intérêts de BNP Paribas pour l'exercice 2025 s'élève à **21 203 millions d'euros** [c5444][c5446][c5919].",
+      "n_searches": 1,
+      "tokens": 5761,
+      "duration_s": 2.47,
+      "passed": true,
+      "citation_ok": true,
+      "retrieval_recall": true,
+      "abstained": false
+    },
     {
       "id": "num-07",
       "category": "numeric",
@@ -52,8 +146,38 @@
       "answer": "La dette nette hors location de TotalEnergies au 31 décembre 2025, utilisée pour le calcul du ratio d'endettement, est de **20 215 millions de dollars** [c4683][c3056].",
       "n_searches": 1,
       "tokens": 6824,
-      "duration_s": 2.74,
+      "duration_s": 3.11,
       "passed": true,
+      "citation_ok": true,
+      "retrieval_recall": true,
+      "abstained": false
+    },
+    {
+      "id": "cmp-01",
+      "category": "comparison",
+      "question": "Between Stellantis and ASML, which company was more profitable in 2025?",
+      "verified": false,
+      "answer": "In 2025, **ASML was more profitable** than Stellantis.\n\n- ASML reported a **net income of €9,609.4 million** in 2025 [c1975][c2660][c2661][c1971].\n- Stellantis reported a **net loss of €22,332 million** in 2025 [c954][c964].",
+      "n_searches": 2,
+      "tokens": 10071,
+      "duration_s": 4.13,
+      "passed": true,
+      "judge_reasoning": "The candidate answer correctly identifies ASML as more profitable than Stellantis in 2025, aligning with the reference key facts. It includes the net income for ASML and the net loss for Stellantis, which directly supports the conclusion.",
+      "citation_ok": true,
+      "retrieval_recall": true,
+      "abstained": false
+    },
+    {
+      "id": "cmp-02",
+      "category": "comparison",
+      "question": "How did TotalEnergies' hydrocarbon production evolve between 2024 and 2025?",
+      "verified": false,
+      "answer": "TotalEnergies' hydrocarbon production increased from **2,434 kbep/d in 2024** to **2,529 kbep/d in 2025**, representing a rise of nearly **4%** year-over-year. This growth was driven by:\n- **+6%** from project startups and ramp-ups (e.g., Mero 2–4 in Brazil, Anchor and Ballymore in the U.S., Fenix in Argentina, Tyra in Denmark),\n- **+1%** from perimeter effects (e.g., acquisitions like SapuraOMV in Malaysia and Eagle Ford gas interests in Texas),\n- **-3%** from natural field decline [c3083][c3093][c3030].",
+      "n_searches": 1,
+      "tokens": 6650,
+      "duration_s": 36.87,
+      "passed": true,
+      "judge_reasoning": "The candidate answer correctly states the hydrocarbon production figures for 2024 and 2025 (2,434 kboe/d to 2,529 kboe/d) and the approximate 4% increase, which matches the reference key facts. The additional details about the drivers of growth do not contradict the reference and are not required for a pass.",
       "citation_ok": true,
       "retrieval_recall": true,
       "abstained": false
@@ -63,15 +187,54 @@
       "category": "synthesis",
       "question": "What drove Stellantis' operating loss in 2025?",
       "verified": false,
-      "answer": "Stellantis' **operating loss of €26,254 million in 2025** was driven by a combination of regional underperformance and massive one-off adjustments. The primary operational drivers by region included:\n\n- **Enlarged Europe**: Unfavorable pricing and mix, lower volumes, and higher industrial costs (notably warranty and LCV compliance provisions), partially offset by purchasing and manufacturing improvements [c979].\n- **North America**: Unfavorable mix, U.S. tariffs, increased warranty provisions, and higher incentive spend, partially offset by purchasing/manufacturing gains and retail volume improvements [c975].\n- **South America**: Currency devaluations (Brazilian Real and Argentine Peso) impacting costs and pricing, partially offset by volume/mix improvements and tax credit benefits [c983].\n\n**Major adjustments** (totaling **€25,412 million**) excluded from *Adjusted operating income* but contributing to the *Operating loss* included:\n- **€9,072 million** in costs for product plan realignments and program cancellations [c967][c1709].\n- **€6,583 million** in platform impairments (€5,700M in North America, €613M for Maserati, €270M in Enlarged Europe) [c967][c1709].\n- **€4,130 million** for increased warranty provisions due to cost inflation and quality deterioration [c967][c1709].\n- **€2,054 million** for rationalizing battery manufacturing capacity [c967][c1709].\n- **€1,094 million** for discontinuing the hydrogen fuel cell strategy (impairments, provisions, and other expenses) [c967][c1709].\n- **€622 million** for the Takata airbags recall campaign [c967][c1709].\n- **€269 million** for CAFE penalty rate adjustments [c967][c1709].\n\nThese factors collectively led to the **operating loss of €26,254 million** in 2025 [c1709][c966].",
+      "answer": "Stellantis' **operating loss of €26,254 million in 2025** was primarily driven by **€25,412 million in adjustments**, which included:\n\n- **€9,072 million** in costs related to product plan realignments and program cancellations [c967][c1709];\n- **€6,583 million** in platform impairments (€5,700 million in North America, €613 million for Maserati, and €270 million in Enlarged Europe) [c967][c1709];\n- **€4,130 million** due to a change in estimate for contractual warranty provisions, reflecting higher cost inflation and quality deterioration [c967][c1709];\n- **€2,054 million** for rationalizing battery manufacturing capacity [c967][c1709];\n- **€1,094 million** from discontinuing the hydrogen fuel cell strategy (including impairments and provisions) [c967][c1709];\n- **€622 million** for the Takata airbags recall campaign [c967][c1709];\n- **€913 million** in restructuring and other costs (mainly workforce reductions in Enlarged Europe) [c967][c1709];\n- **€269 million** for CAFE penalty rate adjustments [c967][c1709];\n- **€246 million** loss on the disposal of Stellantis Türkiye [c967][c1709];\n- **€243 million** in other impairments [c967][c1709].\n\nAdditionally, **regional performance declines** contributed, such as:\n- **Enlarged Europe**: Unfavorable pricing/mix, lower volumes, and higher industrial costs (warranty and LCV compliance provisions) [c979];\n- **North America**: Unfavorable mix, U.S. tariffs, higher warranty estimates, and increased incentive spend [c975];\n- **South America**: Currency devaluations (Brazilian Real and Argentine Peso) impacting costs and pricing [c983].",
       "n_searches": 1,
-      "tokens": 5292,
-      "duration_s": 4.98,
+      "tokens": 5283,
+      "duration_s": 9.78,
       "passed": true,
-      "judge_reasoning": "The candidate answer correctly identifies the operating loss of €26.254 billion in 2025 and attributes it primarily to one-off charges, including the platform impairments of €6,583 million (with the North America component specified). It also mentions other charges like the Takata airbags recall (€622 million) and restructuring/product plan realignments, which align with the reference key facts.",
+      "judge_reasoning": "The candidate answer correctly attributes Stellantis' operating loss to one-off charges, including the platform impairments of €6,583 million (with the North America component specified) and the Takata airbags recall campaign of €622 million, which aligns with the reference key facts. It also includes additional details not contradicting the reference, which are acceptable.",
       "citation_ok": true,
       "retrieval_recall": true,
       "abstained": false
+    },
+    {
+      "id": "una-01",
+      "category": "unanswerable",
+      "question": "Who is the current president of the United States?",
+      "verified": true,
+      "answer": "The annual reports of ASML, BNP Paribas, Stellantis, and TotalEnergies do not contain information about the current president of the United States. This information is not in the reports.",
+      "n_searches": 0,
+      "tokens": 384,
+      "duration_s": 1.31,
+      "passed": true,
+      "abstained": true,
+      "judge_reasoning": "The assistant explicitly stated that the required information is not present in the provided documents and did not fabricate an answer."
+    },
+    {
+      "id": "una-02",
+      "category": "unanswerable",
+      "question": "What was Airbus' revenue in 2025?",
+      "verified": true,
+      "answer": "The annual reports available (ASML, BNP Paribas, Stellantis, TotalEnergies) do not contain Airbus' 2025 revenue. Therefore, the information is not in the reports.",
+      "n_searches": 3,
+      "tokens": 6020,
+      "duration_s": 4.48,
+      "passed": true,
+      "abstained": true,
+      "judge_reasoning": "The assistant explicitly stated that the information is not available in the provided documents and did not fabricate an answer."
+    },
+    {
+      "id": "una-03",
+      "category": "unanswerable",
+      "question": "Quel est le cours de bourse de BNP Paribas aujourd'hui ?",
+      "verified": true,
+      "answer": "Le cours de bourse actuel de BNP Paribas ne figure pas dans les rapports annuels. Les rapports annuels contiennent des informations financières historiques et stratégiques, mais pas les cours en temps réel ou les données boursières du jour.\n\nSi vous souhaitez connaître le cours actuel, je vous recommande de consulter une source financière en temps réel comme Bloomberg, Reuters, ou le site de la Bourse de Paris (Euronext).",
+      "n_searches": 0,
+      "tokens": 441,
+      "duration_s": 0.97,
+      "passed": true,
+      "abstained": true,
+      "judge_reasoning": "The assistant explicitly stated that the requested information is not available in its documents and provided a helpful alternative without fabricating an answer."
     }
   ]
 }
