@@ -127,9 +127,10 @@ Reference key facts (ground truth): {gold_facts}
 Candidate answer:
 {answer}
 
-Grade PASS if the candidate answer is factually consistent with the reference key facts \
-and actually answers the question. Grade FAIL if it contradicts the reference, invents \
-figures absent from it, or dodges the question. Extra correct detail is fine. \
+Grade PASS if the candidate answer is consistent with the reference key facts and \
+actually answers the question. Grade FAIL ONLY if it contradicts the reference or \
+misses its core facts. IMPORTANT: the reference is a MINIMAL set of key facts, not an \
+exhaustive one; additional details beyond the reference must NOT cause a FAIL. \
 Do NOT reward length or style.
 
 Respond in JSON: {{"reasoning": "<2-3 sentences>", "verdict": "pass" | "fail"}}"""

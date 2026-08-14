@@ -52,9 +52,10 @@
     {
       "id": "num-07",
       "category": "numeric",
-      "question": "Quelle est la dette nette de TotalEnergies fin 2025 ?",
+      "question": "Quelle est la dette nette hors location de TotalEnergies au 31 décembre 2025, celle utilisée pour le calcul du ratio d'endettement ?",
+      "_note": "Question précisée après le run 1 : 'dette nette' seule est ambiguë (l'URD contient aussi les dettes financières brutes p.520-521, où l'agent avait trouvé 57 827 M$, lecture défendable).",
       "gold": { "value": 20215, "unit": "USD", "scale": "million", "tolerance_pct": 1 },
-      "gold_pages": [{ "company": "TotalEnergies", "pages": [63] }],
+      "gold_pages": [{ "company": "TotalEnergies", "pages": [63, 522, 523] }],
       "verified": false
     },
     {
@@ -80,7 +81,7 @@
       "id": "syn-01",
       "category": "synthesis",
       "question": "What drove Stellantis' operating loss in 2025?",
-      "gold_facts": "Main drivers include: platform impairments of EUR 6,583 million (large North America component) following reduced volume and profitability expectations and cancellation of certain vehicle programs; EUR 622 million for the Takata airbags recall campaign; restructuring costs around EUR 913 million. Overall operating loss about EUR 26.3 billion.",
+      "gold_facts": "Operating loss of about EUR 26.3 billion, driven by large one-off charges. Most notable: platform impairments of EUR 6,583 million (largest component in North America) following reduced volume and profitability expectations. Other charges named in the report include the Takata airbags recall campaign (EUR 622 million), restructuring costs (~EUR 913 million), and further unusual items detailed in the notes (product plan realignments / program cancellations, warranty provision changes, battery capacity rationalization). An answer is correct if it attributes the loss to these one-off charges, with the platform impairments figure right.",
       "gold_pages": [{ "company": "Stellantis", "pages": [62, 63] }],
       "verified": false
     },

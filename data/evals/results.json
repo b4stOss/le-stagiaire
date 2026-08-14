@@ -1,18 +1,18 @@
 {
-  "run_at": "2026-08-14 14:13",
+  "run_at": "2026-08-14 14:18",
   "summary": {
     "overall": {
-      "passed": 3,
-      "total": 3,
+      "passed": 2,
+      "total": 2,
       "pct": 100
     },
     "by_category": {
       "numeric": {
-        "passed": 2,
-        "total": 2,
+        "passed": 1,
+        "total": 1,
         "pct": 100
       },
-      "unanswerable": {
+      "synthesis": {
         "passed": 1,
         "total": 1,
         "pct": 100
@@ -29,61 +29,49 @@
       "pct": 100
     },
     "correct_abstention": {
-      "passed": 1,
-      "total": 1,
-      "pct": 100
+      "passed": 0,
+      "total": 0,
+      "pct": null
     },
     "false_refusal": {
       "count": 0,
       "total": 2
     },
     "verified_share": {
-      "passed": 1,
-      "total": 3,
-      "pct": 33
+      "passed": 0,
+      "total": 2,
+      "pct": 0
     }
   },
   "questions": [
     {
-      "id": "num-01",
+      "id": "num-07",
       "category": "numeric",
-      "question": "What was Stellantis' net revenue in 2025?",
+      "question": "Quelle est la dette nette hors location de TotalEnergies au 31 décembre 2025, celle utilisée pour le calcul du ratio d'endettement ?",
       "verified": false,
-      "answer": "Stellantis' net revenue in 2025 was **€153,508 million** [c954][c1589][c1590].",
+      "answer": "La dette nette hors location de TotalEnergies au 31 décembre 2025, utilisée pour le calcul du ratio d'endettement, est de **20 215 millions de dollars** [c4683][c3056].",
       "n_searches": 1,
-      "tokens": 3887,
-      "duration_s": 2.26,
+      "tokens": 6824,
+      "duration_s": 2.74,
       "passed": true,
       "citation_ok": true,
       "retrieval_recall": true,
       "abstained": false
     },
     {
-      "id": "num-04",
-      "category": "numeric",
-      "question": "Quel est le ratio CET1 de BNP Paribas au 31 décembre 2025 ?",
+      "id": "syn-01",
+      "category": "synthesis",
+      "question": "What drove Stellantis' operating loss in 2025?",
       "verified": false,
-      "answer": "Le ratio CET1 de BNP Paribas au 31 décembre 2025 est de **12,6 %** [c5884][c5490]. Une autre source précise **12,61 %** [c6004].",
+      "answer": "Stellantis' **operating loss of €26,254 million in 2025** was driven by a combination of regional underperformance and massive one-off adjustments. The primary operational drivers by region included:\n\n- **Enlarged Europe**: Unfavorable pricing and mix, lower volumes, and higher industrial costs (notably warranty and LCV compliance provisions), partially offset by purchasing and manufacturing improvements [c979].\n- **North America**: Unfavorable mix, U.S. tariffs, increased warranty provisions, and higher incentive spend, partially offset by purchasing/manufacturing gains and retail volume improvements [c975].\n- **South America**: Currency devaluations (Brazilian Real and Argentine Peso) impacting costs and pricing, partially offset by volume/mix improvements and tax credit benefits [c983].\n\n**Major adjustments** (totaling **€25,412 million**) excluded from *Adjusted operating income* but contributing to the *Operating loss* included:\n- **€9,072 million** in costs for product plan realignments and program cancellations [c967][c1709].\n- **€6,583 million** in platform impairments (€5,700M in North America, €613M for Maserati, €270M in Enlarged Europe) [c967][c1709].\n- **€4,130 million** for increased warranty provisions due to cost inflation and quality deterioration [c967][c1709].\n- **€2,054 million** for rationalizing battery manufacturing capacity [c967][c1709].\n- **€1,094 million** for discontinuing the hydrogen fuel cell strategy (impairments, provisions, and other expenses) [c967][c1709].\n- **€622 million** for the Takata airbags recall campaign [c967][c1709].\n- **€269 million** for CAFE penalty rate adjustments [c967][c1709].\n\nThese factors collectively led to the **operating loss of €26,254 million** in 2025 [c1709][c966].",
       "n_searches": 1,
-      "tokens": 8332,
-      "duration_s": 4.85,
+      "tokens": 5292,
+      "duration_s": 4.98,
       "passed": true,
+      "judge_reasoning": "The candidate answer correctly identifies the operating loss of €26.254 billion in 2025 and attributes it primarily to one-off charges, including the platform impairments of €6,583 million (with the North America component specified). It also mentions other charges like the Takata airbags recall (€622 million) and restructuring/product plan realignments, which align with the reference key facts.",
       "citation_ok": true,
       "retrieval_recall": true,
       "abstained": false
-    },
-    {
-      "id": "una-01",
-      "category": "unanswerable",
-      "question": "Who is the current president of the United States?",
-      "verified": true,
-      "answer": "The annual reports of ASML, BNP Paribas, Stellantis, and TotalEnergies do not contain information about the current president of the United States. This information is not in the reports.",
-      "n_searches": 0,
-      "tokens": 384,
-      "duration_s": 1.02,
-      "passed": true,
-      "abstained": true,
-      "judge_reasoning": "The assistant correctly identified that the information was not present in the provided documents and explicitly stated this without fabricating an answer."
     }
   ]
 }
