@@ -11,20 +11,41 @@ def get_client() -> Mistral:
     return Mistral(api_key=settings.mistral_api_key)
 
 
-def embed_texts(texts: list[str], batch_size: int = 100) -> list[list[float]]:
-    """Embed texts with mistral-embed (1024 dims), batched, with basic backoff on 429s."""
+# The embeddings endpoint caps the TOTAL tokens per request, so batches are
+# packed by estimated size (~4 chars/token), not by a fixed count.
+MAX_BATCH_CHARS = 40_000
+MAX_BATCH_SIZE = 64
+
+
+def _embed_batch(batch: list[str]) -> list[list[float]]:
     client = get_client()
+    for attempt in range(5):
+        try:
+            resp = client.embeddings.create(model=settings.embed_model, inputs=batch)
+            return [d.embedding for d in resp.data]
+        except Exception as exc:
+            msg = str(exc)
+            if "Too many tokens" in msg and len(batch) > 1:
+                mid = len(batch) // 2  # our estimate was off: halve and retry
+                return _embed_batch(batch[:mid]) + _embed_batch(batch[mid:])
+            if "429" in msg and attempt < 4:
+                time.sleep(2**attempt)
+                continue
+            raise
+    raise RuntimeError("unreachable")
+
+
+def embed_texts(texts: list[str]) -> list[list[float]]:
+    """Embed texts with mistral-embed (1024 dims), batched under the request token cap."""
     vectors: list[list[float]] = []
-    for i in range(0, len(texts), batch_size):
-        batch = texts[i : i + batch_size]
-        for attempt in range(5):
-            try:
-                resp = client.embeddings.create(model=settings.embed_model, inputs=batch)
-                vectors.extend(d.embedding for d in resp.data)
-                break
-            except Exception as exc:  # SDK raises typed errors; retry on rate limits, fail fast otherwise
-                if "429" in str(exc) and attempt < 4:
-                    time.sleep(2**attempt)
-                    continue
-                raise
+    batch: list[str] = []
+    batch_chars = 0
+    for text in texts:
+        if batch and (batch_chars + len(text) > MAX_BATCH_CHARS or len(batch) >= MAX_BATCH_SIZE):
+            vectors.extend(_embed_batch(batch))
+            batch, batch_chars = [], 0
+        batch.append(text)
+        batch_chars += len(text)
+    if batch:
+        vectors.extend(_embed_batch(batch))
     return vectors
