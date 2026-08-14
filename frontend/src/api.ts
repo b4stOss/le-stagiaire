@@ -36,12 +36,22 @@ export interface AnswerEvent {
   duration_s: number;
 }
 
+export interface TokenEvent {
+  type: "token";
+  text: string;
+}
+
+/** Streamed text so far was pre-tool-call preamble: discard it. */
+export interface ResetEvent {
+  type: "reset";
+}
+
 export interface ErrorEvent {
   type: "error";
   message: string;
 }
 
-export type AgentEvent = SearchEvent | AnswerEvent | ErrorEvent;
+export type AgentEvent = SearchEvent | TokenEvent | ResetEvent | AnswerEvent | ErrorEvent;
 
 export async function getDocuments(): Promise<DocumentInfo[]> {
   const res = await fetch("/api/documents");

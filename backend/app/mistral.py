@@ -25,6 +25,21 @@ def chat_complete(**kwargs):
     raise RuntimeError("unreachable")
 
 
+def chat_stream(**kwargs):
+    """chat.stream with the same backoff. Retries only cover opening the stream;
+    a failure mid-stream propagates (the caller falls back to a fresh request)."""
+    client = get_client()
+    for attempt in range(7):
+        try:
+            return client.chat.stream(**kwargs)
+        except Exception as exc:
+            if "429" in str(exc) and attempt < 6:
+                time.sleep(2**attempt)
+                continue
+            raise
+    raise RuntimeError("unreachable")
+
+
 # The embeddings endpoint caps the TOTAL tokens per request, so batches are
 # packed by estimated size (~4 chars/token), not by a fixed count.
 MAX_BATCH_CHARS = 40_000

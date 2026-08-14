@@ -14,6 +14,46 @@ function linkCitations(answer: string, citations: Citation[]): string {
   });
 }
 
+/** While streaming, number markers live by order of appearance (the same
+    order the server resolves them in) and hide a trailing half-written marker. */
+function liveCitations(text: string): string {
+  const settled = text.replace(/\[[^\]]*$/, "");
+  const order = new Map<number, number>();
+  return settled.replace(/\[([^\]]*?c\d+[^\]]*?)\]/g, (_whole, group: string) => {
+    const ids = [...group.matchAll(/c(\d+)/g)].map((m) => Number(m[1]));
+    return ids
+      .map((id) => {
+        if (!order.has(id)) order.set(id, order.size + 1);
+        return `[${order.get(id)}](#cite-live)`;
+      })
+      .join("");
+  });
+}
+
+const liveMarkerRenderer = {
+  a: ({ href, children }: { href?: string; children?: React.ReactNode }) => {
+    if (href === "#cite-live") return <span className="cite-marker">{children}</span>;
+    return (
+      <a href={href} target="_blank" rel="noreferrer">
+        {children}
+      </a>
+    );
+  },
+};
+
+/** The answer sheet while tokens are still arriving: live markers, blinking caret. */
+export function StreamingAnswer({ text }: { text: string }) {
+  return (
+    <div className="answer-layout">
+      <div className="answer-sheet streaming">
+        <ReactMarkdown remarkPlugins={[remarkGfm]} components={liveMarkerRenderer}>
+          {liveCitations(text)}
+        </ReactMarkdown>
+      </div>
+    </div>
+  );
+}
+
 function pagesLabel(c: Citation): string {
   return c.page_start === c.page_end ? `p. ${c.page_start}` : `p. ${c.page_start}–${c.page_end}`;
 }
@@ -23,32 +63,52 @@ interface SidenoteProps {
   n: number;
   top?: number;
   active: boolean;
+  flash: boolean;
+  open: boolean;
+  onToggle: (n: number) => void;
   onHover: (n: number | null) => void;
   measureRef?: (el: HTMLDivElement | null) => void;
 }
 
-function Sidenote({ citation, n, top, active, onHover, measureRef }: SidenoteProps) {
-  const [open, setOpen] = useState(false);
+function Sidenote({ citation, n, top, active, flash, open, onToggle, onHover, measureRef }: SidenoteProps) {
   return (
     <div
       ref={measureRef}
       id={`cite-${n}`}
-      className={`sidenote${active ? " active" : ""}`}
-      style={top !== undefined ? { top } : undefined}
+      className={`sidenote${active ? " active" : ""}${flash ? " flash" : ""}`}
+      style={{
+        ...(top !== undefined ? { top } : undefined),
+        animationDelay: `${Math.min(n - 1, 5) * 70}ms`,
+      }}
       onMouseEnter={() => onHover(n)}
       onMouseLeave={() => onHover(null)}
     >
-      <div className="sidenote-head">
+      <button className="sidenote-head" aria-expanded={open} onClick={() => onToggle(n)}>
         <span className="sidenote-n">{n}</span>
         <span className="sidenote-src">
           {citation.company} <span className="sidenote-pages">{pagesLabel(citation)}</span>
         </span>
-      </div>
-      {citation.section_path && <div className="sidenote-section">{citation.section_path}</div>}
-      <button className="sidenote-toggle" onClick={() => setOpen(!open)}>
-        {open ? "Hide excerpt" : "Read excerpt"}
+        <svg
+          className="sidenote-chevron"
+          width="12"
+          height="12"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          style={{ transform: open ? "rotate(180deg)" : "rotate(0)" }}
+        >
+          <path d="M6 9l6 6 6-6" />
+        </svg>
       </button>
-      {open && <blockquote className="sidenote-quote">{citation.quote}</blockquote>}
+      {citation.section_path && <div className="sidenote-section">{citation.section_path}</div>}
+      <div className={`sidenote-drop${open ? " open" : ""}`}>
+        <div>
+          <blockquote className="sidenote-quote">{citation.quote}</blockquote>
+        </div>
+      </div>
     </div>
   );
 }
@@ -59,6 +119,9 @@ export default function Answer({ result }: { result: AnswerEvent }) {
   const [tops, setTops] = useState<number[] | null>(null);
   const [wide, setWide] = useState(() => window.matchMedia("(min-width: 1080px)").matches);
   const [active, setActive] = useState<number | null>(null);
+  const [openNotes, setOpenNotes] = useState<Set<number>>(new Set());
+  const [flash, setFlash] = useState<number | null>(null);
+  const flashTimer = useRef<number | undefined>(undefined);
 
   useEffect(() => {
     const mq = window.matchMedia("(min-width: 1080px)");
@@ -67,8 +130,15 @@ export default function Answer({ result }: { result: AnswerEvent }) {
     return () => mq.removeEventListener("change", onChange);
   }, []);
 
+  useEffect(() => {
+    setOpenNotes(new Set());
+    setFlash(null);
+    return () => window.clearTimeout(flashTimer.current);
+  }, [result]);
+
   // Align each sidenote with its first marker in the text, then resolve
-  // collisions by stacking downward.
+  // collisions by stacking downward. Notes are observed too, so opening an
+  // excerpt pushes everything below it instead of overlapping.
   useLayoutEffect(() => {
     if (!wide || !bodyRef.current) {
       setTops(null);
@@ -94,22 +164,45 @@ export default function Answer({ result }: { result: AnswerEvent }) {
     compute();
     const observer = new ResizeObserver(compute);
     observer.observe(body);
+    noteRefs.current.forEach((el) => el && observer.observe(el));
     return () => observer.disconnect();
   }, [wide, result]);
+
+  const toggleNote = (n: number) =>
+    setOpenNotes((prev) => {
+      const next = new Set(prev);
+      if (next.has(n)) next.delete(n);
+      else next.add(n);
+      return next;
+    });
+
+  /** Marker clicked: open the note's excerpt, bring it into view, flash it. */
+  const revealNote = (n: number) => {
+    setOpenNotes((prev) => new Set(prev).add(n));
+    window.clearTimeout(flashTimer.current);
+    setFlash(null);
+    window.setTimeout(() => setFlash(n), 30);
+    flashTimer.current = window.setTimeout(() => setFlash(null), 1500);
+    requestAnimationFrame(() => {
+      document.getElementById(`cite-${n}`)?.scrollIntoView({ block: "center", behavior: "smooth" });
+    });
+  };
 
   const markerRenderer = {
     a: ({ href, children }: { href?: string; children?: React.ReactNode }) => {
       if (href?.startsWith("#cite-")) {
         const n = Number(href.slice(6));
+        const c = result.citations[n - 1];
         return (
           <a
             href={href}
             className={`cite-marker${active === n ? " active" : ""}`}
+            title={c ? `${c.company} · ${pagesLabel(c)}` : undefined}
             onMouseEnter={() => setActive(n)}
             onMouseLeave={() => setActive(null)}
             onClick={(e) => {
-              if (wide) e.preventDefault();
-              document.getElementById(`cite-${n}`)?.scrollIntoView({ block: "center", behavior: "smooth" });
+              e.preventDefault();
+              revealNote(n);
             }}
           >
             {children}
@@ -130,11 +223,6 @@ export default function Answer({ result }: { result: AnswerEvent }) {
         <ReactMarkdown remarkPlugins={[remarkGfm]} components={markerRenderer}>
           {linkCitations(result.answer, result.citations)}
         </ReactMarkdown>
-        <div className="answer-stats">
-          {result.trace.length} {result.trace.length === 1 ? "search" : "searches"} ·{" "}
-          {result.iterations} steps · {(result.prompt_tokens + result.completion_tokens).toLocaleString()} tokens ·{" "}
-          {result.duration_s}s{result.capped ? " · stopped at iteration cap" : ""}
-        </div>
       </div>
       <div className="answer-margin">
         {result.citations.map((c, i) => (
@@ -144,6 +232,9 @@ export default function Answer({ result }: { result: AnswerEvent }) {
             n={i + 1}
             top={wide && tops ? tops[i] : undefined}
             active={active === i + 1}
+            flash={flash === i + 1}
+            open={openNotes.has(i + 1)}
+            onToggle={toggleNote}
             onHover={setActive}
             measureRef={(el) => (noteRefs.current[i] = el)}
           />

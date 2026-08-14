@@ -15,7 +15,7 @@ from app.agent import answer_question
 from app.config import DATA_DIR
 from app.db import get_conn
 
-app = FastAPI(title="Rapport")
+app = FastAPI(title="Le Stagiaire")
 
 app.add_middleware(
     CORSMiddleware,
@@ -48,7 +48,8 @@ def documents() -> list[dict]:
 
 @app.post("/api/ask")
 def ask(req: AskRequest) -> StreamingResponse:
-    """SSE stream: 'search' events while the agent works, one final 'answer' event."""
+    """SSE stream: 'search' and streamed 'token' events while the agent works
+    ('reset' discards tokens that preceded a tool call), one final 'answer' event."""
     events: queue.Queue = queue.Queue()
     done = object()
 

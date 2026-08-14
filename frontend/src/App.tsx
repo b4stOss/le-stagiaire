@@ -1,6 +1,8 @@
-import { useEffect, useState } from "react";
-import Answer from "./Answer";
+import { useEffect, useRef, useState } from "react";
+import Answer, { StreamingAnswer } from "./Answer";
 import Evals from "./Evals";
+import FlameMark from "./FlameMark";
+import Trace from "./Trace";
 import {
   AgentEvent,
   AnswerEvent,
@@ -17,44 +19,37 @@ const EXAMPLES = [
   "Between Stellantis and ASML, which company was more profitable in 2025?",
 ];
 
-function AgentLog({ searches, running }: { searches: SearchEvent[]; running: boolean }) {
-  if (searches.length === 0 && !running) return null;
-  return (
-    <div className="agent-log" aria-live="polite">
-      {searches.map((s, i) => (
-        <div key={i} className="log-line">
-          <span className="log-verb">search</span>
-          <span className="log-query">{s.query}</span>
-          {s.company && <span className="log-scope">{s.company}</span>}
-        </div>
-      ))}
-      {running && (
-        <div className="log-line pulse">
-          <span className="log-verb">agent</span>
-          <span className="log-query">reading results…</span>
-        </div>
-      )}
-    </div>
-  );
-}
-
 function AskTab({ documents }: { documents: DocumentInfo[] }) {
   const [question, setQuestion] = useState("");
   const [searches, setSearches] = useState<SearchEvent[]>([]);
+  const [streamText, setStreamText] = useState("");
   const [result, setResult] = useState<AnswerEvent | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
+  const [elapsed, setElapsed] = useState(0);
+  const startedAt = useRef(0);
+
+  useEffect(() => {
+    if (!running) return;
+    const timer = setInterval(() => setElapsed((Date.now() - startedAt.current) / 1000), 100);
+    return () => clearInterval(timer);
+  }, [running]);
 
   const ask = async (q: string) => {
     if (!q.trim() || running) return;
     setQuestion(q);
     setSearches([]);
+    setStreamText("");
     setResult(null);
     setError(null);
+    setElapsed(0);
+    startedAt.current = Date.now();
     setRunning(true);
     try {
       await askStream(q, (event: AgentEvent) => {
         if (event.type === "search") setSearches((prev) => [...prev, event]);
+        else if (event.type === "token") setStreamText((prev) => prev + event.text);
+        else if (event.type === "reset") setStreamText("");
         else if (event.type === "answer") setResult(event);
         else if (event.type === "error") setError(event.message);
       });
@@ -79,7 +74,7 @@ function AskTab({ documents }: { documents: DocumentInfo[] }) {
         {documents.length > 0 && (
           <span className="corpus-meta">
             {" "}
-            — FY2025 filings, {totalPages.toLocaleString()} pages indexed
+            - FY2025 filings, {totalPages.toLocaleString()} pages indexed
           </span>
         )}
       </p>
@@ -113,7 +108,13 @@ function AskTab({ documents }: { documents: DocumentInfo[] }) {
         </div>
       )}
 
-      <AgentLog searches={searches} running={running} />
+      <Trace
+        searches={searches}
+        result={result}
+        running={running}
+        streaming={streamText.length > 0}
+        elapsed={elapsed}
+      />
 
       {error && (
         <div className="error">
@@ -121,7 +122,7 @@ function AskTab({ documents }: { documents: DocumentInfo[] }) {
         </div>
       )}
 
-      {result && <Answer result={result} />}
+      {result ? <Answer result={result} /> : streamText && <StreamingAnswer text={streamText} />}
     </>
   );
 }
@@ -138,7 +139,10 @@ export default function App() {
     <div className="page">
       <header className="masthead">
         <div className="masthead-row">
-          <h1 className="wordmark">Rapport</h1>
+          <h1 className="wordmark">
+            <FlameMark px={7} />
+            Le Stagiaire
+          </h1>
           <nav aria-label="Sections">
             <button className={tab === "ask" ? "active" : ""} onClick={() => setTab("ask")}>
               Ask
@@ -149,13 +153,13 @@ export default function App() {
           </nav>
         </div>
         <p className="tagline">
-          An analyst agent over annual reports. Every figure cites its page.
+          The intern who actually reads the filings. Every figure cites its page.
         </p>
       </header>
       <main>{tab === "ask" ? <AskTab documents={documents} /> : <Evals />}</main>
       <footer>
-        Built on Mistral: OCR, embeddings and agent all run on La Plateforme.
-        Answers come only from the filings; when the information is not there, the agent says so.
+        Built on Mistral: OCR, embeddings and agent all run on La Plateforme. When the answer
+        is not in the filings, Le Stagiaire says so instead of guessing.
       </footer>
     </div>
   );

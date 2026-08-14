@@ -16,3 +16,6 @@ dist/
 
 # OS / editors
 .DS_Store
+
+# TypeScript incremental build state
+frontend/tsconfig.tsbuildinfo

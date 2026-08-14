@@ -1,8 +1,8 @@
-# Rapport
+# Le Stagiaire
 
-**Status: work in progress (scoping and stack validated, build starting).**
+**Status: work in progress (pipeline, agent, evals and UI built; deployment pending).**
 
-An analyst agent for annual reports, built end-to-end on Mistral's platform.
+An analyst agent for annual reports, built end-to-end on Mistral's platform. Named after the junior who usually gets handed the 800-page filing: it reads everything, cites the page for every figure, and unlike a real intern it says "I don't know" instead of improvising.
 
 ## The problem
 
@@ -27,7 +27,7 @@ Pipeline (all models served by Mistral's La Plateforme):
 1. **Ingestion**: PDF filings parsed with Mistral OCR into page-anchored markdown (tables preserved).
 2. **Chunking**: structure-aware splitting, metadata kept per chunk (company, year, page, section).
 3. **Indexing**: Mistral embeddings stored in Postgres + pgvector; hybrid retrieval (vector similarity + full-text) because financial questions mix semantics and exact figures.
-4. **Agent**: a tool-calling loop around a `search_filings` tool. Simple questions resolve in one search; comparisons decompose into several. System prompt enforces grounding, citations, and refusal.
+4. **Agent**: a tool-calling loop around a `search_filings` tool. Simple questions resolve in one search; comparisons decompose into several. System prompt enforces grounding, citations, and refusal. The API streams the whole run over SSE: each search as it fires, then the answer token by token.
 5. **Evaluation**: a hand-verified golden set of ~30 questions across four categories (numeric extraction, synthesis, cross-document comparison, unanswerable). Scored with exact numeric matching plus an LLM judge for text answers and citation accuracy. Results are displayed in the app.
 
 Backend: Python / FastAPI, direct `mistralai` SDK calls (no RAG framework). Models: `mistral-medium-latest` (agent), `mistral-small-latest` (eval judge), `mistral-embed`, `mistral-ocr-latest`. Frontend: React. Deployment: Railway.

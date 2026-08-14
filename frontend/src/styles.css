@@ -1,9 +1,11 @@
-/* Rapport — design system
+/* Le Stagiaire - design system
    Three typographic voices:
    - Archivo: the instrument (chrome, headings, controls)
    - Source Serif 4: the document (answer prose)
-   - IBM Plex Mono: the apparatus (page refs, figures, agent log)
-   One color: Mistral flame, reserved for the source system and active states. */
+   - IBM Plex Mono: the apparatus (page refs, figures, trace)
+   One color story: the Mistral flame. Its five bands appear in the pixel mark
+   (which doubles as the loader) and the eval bars; a single flame accent
+   carries active states everywhere else. */
 
 * { box-sizing: border-box; }
 
@@ -23,6 +25,9 @@
   --font-ui: "Archivo", -apple-system, sans-serif;
   --font-doc: "Source Serif 4", Georgia, serif;
   --font-data: "IBM Plex Mono", ui-monospace, monospace;
+
+  /* the settle: fast start, long soft landing (easeOutQuint) */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 body {
@@ -43,12 +48,27 @@ main { max-width: 660px; }
 .masthead-row { display: flex; align-items: baseline; justify-content: space-between; }
 .wordmark {
   margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
   font-size: 2.1rem;
   font-weight: 700;
   letter-spacing: -0.045em;
 }
-.wordmark::after { content: "."; color: var(--flame); }
 .tagline { margin: 6px 0 0; color: var(--ink-soft); font-size: 0.98rem; }
+
+/* pixel flame: the mark and the loader are the same object */
+.flame-mark { display: inline-grid; flex-shrink: 0; }
+.flame-pixel { border-radius: 1px; }
+.flame-pixel.lit {
+  opacity: 0.15;
+  animation: pixel-on 650ms ease-in-out infinite;
+}
+@keyframes pixel-on {
+  0%, 100% { opacity: 0.15; }
+  18%, 42% { opacity: 1; }
+  62% { opacity: 0.15; }
+}
 
 nav { display: flex; gap: 4px; }
 nav button {
@@ -103,7 +123,7 @@ nav button.active { color: var(--ink); box-shadow: inset 0 -2px 0 var(--flame); 
 .ask-form button:hover:not(:disabled) { background: #000; }
 .ask-form button:disabled { opacity: 0.4; cursor: default; }
 .ask-form button:focus-visible, .example:focus-visible, nav button:focus-visible,
-.sidenote-toggle:focus-visible, .eval-q-head:focus-visible {
+.sidenote-head:focus-visible, .eval-q-head:focus-visible {
   outline: 2px solid var(--flame); outline-offset: 2px;
 }
 
@@ -124,29 +144,93 @@ nav button.active { color: var(--ink); box-shadow: inset 0 -2px 0 var(--flame); 
 .example::before { content: "→ "; color: var(--rule-strong); }
 .example:hover::before { color: var(--flame); }
 
-/* ---------- agent log ---------- */
+/* ---------- trace: the agent's work log ---------- */
 
-.agent-log {
-  margin: 22px 0 0;
-  font-family: var(--font-data);
-  font-size: 0.82rem;
-  display: flex; flex-direction: column; gap: 5px;
+.trace { margin: 24px 0 0; animation: fade-up 0.35s var(--ease-out); }
+.trace-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-ui);
+  color: var(--ink);
 }
-.log-line { display: flex; gap: 10px; align-items: baseline; }
-.log-verb { color: var(--flame-ink); min-width: 52px; text-align: right; }
-.log-query { color: var(--ink-soft); }
-.log-scope {
+button.trace-head {
+  background: none;
+  border: none;
+  padding: 4px 6px;
+  margin: 0 0 0 -6px;
+  cursor: pointer;
+  border-radius: 4px;
+}
+button.trace-head:hover { background: var(--flame-wash); }
+button.trace-head:focus-visible { outline: 2px solid var(--flame); outline-offset: 2px; }
+.trace-label { font-size: 0.88rem; font-weight: 600; }
+.trace.done .trace-label {
+  font-family: var(--font-data);
+  font-weight: 400;
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+}
+.trace-label.shimmer {
+  background-image: linear-gradient(90deg, var(--ink-soft) 35%, var(--ink) 50%, var(--ink-soft) 65%);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: shimmer-text 1.4s linear infinite;
+}
+@keyframes shimmer-text {
+  0% { background-position: 150%; }
+  100% { background-position: -50%; }
+}
+.trace-elapsed {
+  font-family: var(--font-data);
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+.trace-chevron { color: var(--ink-soft); transition: transform 0.3s var(--ease-out); }
+
+.trace-body {
+  display: grid;
+  grid-template-rows: 1fr;
+  opacity: 1;
+  transition: grid-template-rows 0.4s var(--ease-out), opacity 0.4s var(--ease-out);
+}
+.trace-body.closed { grid-template-rows: 0fr; opacity: 0; }
+.trace-body > div { overflow: hidden; }
+
+.trace-rail {
+  margin: 6px 0 0 5px;
+  padding: 2px 0 2px 15px;
+  border-left: 1px solid var(--rule-strong);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.trace-line {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  font-family: var(--font-data);
+  font-size: 0.8rem;
+  animation: fade-up 0.35s var(--ease-out) both;
+}
+.trace-verb { color: var(--flame-ink); }
+.trace-query { color: var(--ink-soft); min-width: 0; overflow-wrap: anywhere; }
+.trace-scope {
   color: var(--ink);
   border: 1px solid var(--rule-strong);
   border-radius: 3px;
   padding: 0 5px;
-  font-size: 0.74rem;
+  font-size: 0.72rem;
+  white-space: nowrap;
 }
-.pulse { animation: pulse 1.3s ease-in-out infinite; }
-@keyframes pulse { 50% { opacity: 0.35; } }
-@media (prefers-reduced-motion: reduce) {
-  .pulse { animation: none; }
-  * { scroll-behavior: auto !important; }
+.trace-meta { color: var(--rule-strong); font-size: 0.72rem; white-space: nowrap; }
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .error {
@@ -174,15 +258,26 @@ nav button.active { color: var(--ink); box-shadow: inset 0 -2px 0 var(--flame); 
   background: var(--sheet);
   border: 1px solid var(--rule);
   border-radius: 2px;
-  padding: 30px 34px 22px;
+  padding: 30px 34px 26px;
   font-family: var(--font-doc);
   font-size: 1.04rem;
   line-height: 1.65;
   box-shadow: 0 1px 2px rgba(22, 19, 15, 0.04);
-  animation: sheet-in 0.35s ease-out;
+  animation: fade-up 0.4s var(--ease-out);
 }
-@keyframes sheet-in { from { opacity: 0; transform: translateY(6px); } }
-@media (prefers-reduced-motion: reduce) { .answer-sheet, .sidenote { animation: none; } }
+
+/* while tokens arrive: a flame caret rides the last line */
+.answer-sheet.streaming > :last-child::after {
+  content: "";
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  margin-left: 3px;
+  vertical-align: -0.15em;
+  background: var(--flame);
+  animation: caret-blink 1s step-end infinite;
+}
+@keyframes caret-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
 
 .answer-sheet h1, .answer-sheet h2, .answer-sheet h3 {
   font-family: var(--font-ui);
@@ -223,15 +318,6 @@ nav button.active { color: var(--ink); box-shadow: inset 0 -2px 0 var(--flame); 
 }
 .cite-marker:hover, .cite-marker.active { background: var(--flame-wash); }
 
-.answer-stats {
-  font-family: var(--font-data);
-  font-size: 0.74rem;
-  color: var(--ink-soft);
-  border-top: 1px solid var(--rule);
-  margin-top: 22px;
-  padding-top: 12px;
-}
-
 /* sidenotes */
 
 .answer-margin { margin-top: 16px; display: flex; flex-direction: column; gap: 12px; }
@@ -242,30 +328,65 @@ nav button.active { color: var(--ink); box-shadow: inset 0 -2px 0 var(--flame); 
   font-size: 0.82rem;
   border-left: 2px solid var(--rule-strong);
   padding: 2px 0 2px 12px;
-  animation: sheet-in 0.35s ease-out;
+  border-radius: 0 4px 4px 0;
+  animation: fade-up 0.4s var(--ease-out) both;
   transition: border-color 0.15s ease;
 }
+.answer-layout.wide .sidenote { transition: top 0.3s var(--ease-out), border-color 0.15s ease; }
 .sidenote.active { border-left-color: var(--flame); }
-.sidenote-head { display: flex; gap: 8px; align-items: baseline; }
+.sidenote.flash {
+  border-left-color: var(--flame);
+  animation: note-flash 1.4s var(--ease-out);
+}
+@keyframes note-flash {
+  0% { background-color: var(--flame-wash); }
+  100% { background-color: transparent; }
+}
+
+.sidenote-head {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.sidenote-head:hover .sidenote-src { color: var(--flame-ink); }
 .sidenote-n {
   font-family: var(--font-data);
   font-size: 0.72rem;
   color: var(--flame-ink);
 }
-.sidenote-src { font-weight: 600; letter-spacing: -0.01em; }
+.sidenote-src { font-weight: 600; letter-spacing: -0.01em; transition: color 0.15s ease; }
 .sidenote-pages { font-family: var(--font-data); font-weight: 400; font-size: 0.76rem; color: var(--ink-soft); }
+.sidenote-chevron {
+  margin-left: auto;
+  flex-shrink: 0;
+  align-self: center;
+  color: var(--ink-soft);
+  transition: transform 0.3s var(--ease-out);
+}
+.sidenote-head:hover .sidenote-chevron { color: var(--ink); }
 .sidenote-section {
   color: var(--ink-soft);
   font-size: 0.78rem;
   margin-top: 2px;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.sidenote-toggle {
-  font-family: var(--font-data);
-  font-size: 0.72rem;
-  color: var(--flame-ink);
-  background: none; border: none; padding: 2px 0; cursor: pointer;
+.sidenote-drop {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition: grid-template-rows 0.35s var(--ease-out), opacity 0.35s var(--ease-out);
 }
+.sidenote-drop.open { grid-template-rows: 1fr; opacity: 1; }
+.sidenote-drop > div { overflow: hidden; }
 .sidenote-quote {
   margin: 6px 0 4px;
   font-family: var(--font-doc);
@@ -379,4 +500,18 @@ footer {
   .answer-sheet { padding: 20px 18px 16px; }
   .eval-q-body { padding-left: 2px; }
   .evals-metrics { gap: 20px; }
+  .trace-line { flex-wrap: wrap; row-gap: 2px; }
+}
+
+/* ---------- reduced motion ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .flame-pixel.lit { animation: none; opacity: 1; }
+  .trace-label.shimmer { animation: none; color: var(--ink-soft); -webkit-background-clip: initial; background-clip: initial; background-image: none; }
+  .trace, .trace-line, .answer-sheet, .sidenote { animation: none; }
+  .sidenote.flash { animation: none; background-color: var(--flame-wash); }
+  .answer-sheet.streaming > :last-child::after { animation: none; }
+  .trace-body, .trace-chevron, .sidenote-drop, .sidenote-chevron { transition: none; }
+  .answer-layout.wide .sidenote { transition: none; }
+  * { scroll-behavior: auto !important; }
 }

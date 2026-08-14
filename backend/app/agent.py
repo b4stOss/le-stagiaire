@@ -13,7 +13,7 @@ from typing import Callable
 
 from app.config import settings
 from app.db import get_conn
-from app.mistral import chat_complete
+from app.mistral import chat_complete, chat_stream
 from app.retrieval import RetrievedChunk, hybrid_search
 
 MAX_ITERATIONS = 8
@@ -144,11 +144,97 @@ def _resolve_citations(answer: str, seen_chunks: dict[int, RetrievedChunk]) -> l
     return citations
 
 
+def _delta_text(content) -> str:
+    """Normalize one streamed content delta to text with inline [cN] markers
+    (same convention as _normalize_content, applied incrementally)."""
+    if isinstance(content, str):
+        return content
+    parts: list[str] = []
+    for part in content or []:
+        kind = getattr(part, "type", None)
+        if kind == "text":
+            parts.append(part.text)
+        elif kind == "reference":
+            refs = "".join(f"[{rid}]" if not str(rid).startswith("[") else str(rid) for rid in part.reference_ids)
+            parts.append(f" {refs}")
+    return "".join(parts)
+
+
+def _stream_call(messages: list, tool_choice: str, on_token: Callable[[str], None] | None):
+    """One streamed model call. Returns (text, tool_calls, usage) where tool_calls
+    is a list of plain dicts ready to go back into the message history."""
+    text_parts: list[str] = []
+    calls: dict[int, dict] = {}
+    usage = (0, 0)
+    with chat_stream(
+        model=settings.agent_model,
+        messages=messages,
+        tools=[SEARCH_TOOL],
+        tool_choice=tool_choice,
+        temperature=TEMPERATURE,
+    ) as stream:
+        for event in stream:
+            chunk = event.data
+            if chunk.usage:
+                usage = (chunk.usage.prompt_tokens or 0, chunk.usage.completion_tokens or 0)
+            if not chunk.choices:
+                continue
+            delta = chunk.choices[0].delta
+            piece = _delta_text(delta.content) if delta.content else ""
+            if piece:
+                text_parts.append(piece)
+                if on_token:
+                    on_token(piece)
+            for tc in delta.tool_calls or []:
+                idx = getattr(tc, "index", None)
+                if idx is None:
+                    idx = len(calls)
+                slot = calls.setdefault(
+                    idx,
+                    {"id": "", "type": "function", "function": {"name": "", "arguments": ""}},
+                )
+                if tc.id:
+                    slot["id"] = tc.id
+                if tc.function:
+                    if tc.function.name:
+                        slot["function"]["name"] = tc.function.name
+                    args = tc.function.arguments
+                    if isinstance(args, dict):
+                        slot["function"]["arguments"] += json.dumps(args)
+                    elif args:
+                        slot["function"]["arguments"] += args
+    return "".join(text_parts).strip(), [calls[i] for i in sorted(calls)], usage
+
+
+def _call_model(messages: list, tool_choice: str, on_token: Callable[[str], None] | None):
+    """Streamed call with a non-streaming fallback if the stream drops mid-way."""
+    try:
+        return _stream_call(messages, tool_choice, on_token)
+    except Exception:
+        resp = chat_complete(
+            model=settings.agent_model,
+            messages=messages,
+            tools=[SEARCH_TOOL],
+            tool_choice=tool_choice,
+            temperature=TEMPERATURE,
+        )
+        msg = resp.choices[0].message
+        tool_calls = [
+            {"id": tc.id, "type": "function",
+             "function": {"name": tc.function.name, "arguments": tc.function.arguments}}
+            for tc in (msg.tool_calls or [])
+        ]
+        usage = (resp.usage.prompt_tokens or 0, resp.usage.completion_tokens or 0) if resp.usage else (0, 0)
+        return _normalize_content(msg.content), tool_calls, usage
+
+
 def answer_question(
     question: str,
     on_event: Callable[[dict], None] | None = None,
 ) -> AgentAnswer:
-    """Run the agent loop. on_event receives progress dicts (for SSE streaming)."""
+    """Run the agent loop. on_event receives progress dicts (for SSE streaming):
+    'search' when a tool call fires, 'token' for streamed answer text, 'reset'
+    when streamed text turns out to be pre-tool-call preamble to discard."""
     companies = _list_companies()
     seen_chunks: dict[int, RetrievedChunk] = {}
     result = AgentAnswer(answer="", citations=[])
@@ -158,29 +244,29 @@ def answer_question(
         {"role": "user", "content": question},
     ]
 
+    on_token = (lambda t: on_event({"type": "token", "text": t})) if on_event else None
+
     for iteration in range(MAX_ITERATIONS + 1):
         result.iterations = iteration + 1
         capped = iteration == MAX_ITERATIONS
-        resp = chat_complete(
-            model=settings.agent_model,
-            messages=messages,
-            tools=[SEARCH_TOOL],
-            tool_choice="none" if capped else "auto",
-            temperature=TEMPERATURE,
+        text, tool_calls, usage = _call_model(
+            messages, "none" if capped else "auto", on_token
         )
-        if resp.usage:
-            result.prompt_tokens += resp.usage.prompt_tokens or 0
-            result.completion_tokens += resp.usage.completion_tokens or 0
-        msg = resp.choices[0].message
-        messages.append(msg)
+        result.prompt_tokens += usage[0]
+        result.completion_tokens += usage[1]
 
-        if not msg.tool_calls:
-            result.answer = _normalize_content(msg.content)
+        if not tool_calls:
+            result.answer = text
             result.capped = capped
             break
 
-        for tc in msg.tool_calls:
-            args = json.loads(tc.function.arguments)
+        # any text streamed before the tool calls was preamble, not the answer
+        if text and on_event:
+            on_event({"type": "reset"})
+        messages.append({"role": "assistant", "content": text, "tool_calls": tool_calls})
+
+        for tc in tool_calls:
+            args = json.loads(tc["function"]["arguments"])
             query, company = args.get("query", ""), args.get("company")
             if on_event:
                 on_event({"type": "search", "query": query, "company": company})
@@ -201,7 +287,7 @@ def answer_question(
                 )
             )
             messages.append(
-                {"role": "tool", "name": tc.function.name, "content": content, "tool_call_id": tc.id}
+                {"role": "tool", "name": tc["function"]["name"], "content": content, "tool_call_id": tc["id"]}
             )
 
     result.citations = _resolve_citations(result.answer, seen_chunks)

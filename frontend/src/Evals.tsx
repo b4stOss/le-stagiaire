@@ -60,12 +60,23 @@ const CATEGORY_INFO: Record<string, { label: string; how: string; desc: string }
   },
 };
 
+// The five bands of the Mistral flame; passed segments sweep through them left to right.
+const FLAME_BANDS = ["#ffd800", "#ffaf00", "#ff8205", "#fa500f", "#e10500"];
+
 function Bar({ rate }: { rate: Rate }) {
   return (
     <div className="bar">
-      {Array.from({ length: rate.total }, (_, i) => (
-        <span key={i} className={`bar-seg${i < rate.passed ? " pass" : " fail"}`} />
-      ))}
+      {Array.from({ length: rate.total }, (_, i) => {
+        const passed = i < rate.passed;
+        const band = FLAME_BANDS[Math.min(4, Math.floor((i / Math.max(rate.total - 1, 1)) * 5))];
+        return (
+          <span
+            key={i}
+            className={`bar-seg${passed ? " pass" : " fail"}`}
+            style={passed ? { background: band } : undefined}
+          />
+        );
+      })}
     </div>
   );
 }
