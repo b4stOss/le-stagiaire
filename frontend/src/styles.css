@@ -1,0 +1,104 @@
+/* Functional pass: clean, light, neutral. A real design pass comes later. */
+
+* { box-sizing: border-box; }
+
+:root {
+  --ink: #1a1a1a;
+  --muted: #6b6b6b;
+  --line: #e4e2dd;
+  --bg: #faf9f7;
+  --card: #ffffff;
+  --accent: #d94f00; /* a nod to Mistral's orange, toned down */
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  color: var(--ink);
+  background: var(--bg);
+  line-height: 1.55;
+}
+
+.page { max-width: 780px; margin: 0 auto; padding: 40px 20px 80px; }
+
+header h1 { margin: 0; font-size: 1.9rem; letter-spacing: -0.02em; }
+.tagline { margin: 4px 0 16px; color: var(--muted); }
+
+nav { display: flex; gap: 8px; border-bottom: 1px solid var(--line); margin-bottom: 24px; }
+nav button {
+  background: none; border: none; padding: 8px 14px; font-size: 0.95rem;
+  color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent;
+}
+nav button.active { color: var(--ink); border-bottom-color: var(--accent); }
+
+.corpus { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+.chip {
+  background: var(--card); border: 1px solid var(--line); border-radius: 999px;
+  padding: 4px 12px; font-size: 0.85rem;
+}
+.chip-meta { color: var(--muted); }
+
+.ask-form { display: flex; gap: 8px; margin-bottom: 16px; }
+.ask-form input {
+  flex: 1; padding: 12px 14px; font-size: 1rem; border: 1px solid var(--line);
+  border-radius: 8px; background: var(--card);
+}
+.ask-form input:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: transparent; }
+.ask-form button {
+  padding: 12px 22px; font-size: 1rem; border: none; border-radius: 8px;
+  background: var(--ink); color: white; cursor: pointer;
+}
+.ask-form button:disabled { opacity: 0.4; cursor: default; }
+
+.examples { display: flex; flex-direction: column; gap: 8px; margin-top: 24px; }
+.example {
+  text-align: left; background: var(--card); border: 1px solid var(--line);
+  border-radius: 8px; padding: 10px 14px; font-size: 0.92rem; color: var(--muted);
+  cursor: pointer;
+}
+.example:hover { color: var(--ink); border-color: #c9c6bf; }
+
+.activity { margin: 20px 0; display: flex; flex-direction: column; gap: 6px; }
+.activity-line { font-size: 0.9rem; color: var(--muted); display: flex; gap: 8px; }
+.activity-icon { color: var(--accent); }
+.activity-company { color: var(--ink); }
+.pulse { animation: pulse 1.2s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: 0.35; } }
+
+.error {
+  background: #fdecea; border: 1px solid #f5c6c0; color: #8a1f11;
+  border-radius: 8px; padding: 12px 14px; margin: 16px 0;
+}
+
+.answer {
+  background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+  padding: 20px 24px; margin-top: 12px;
+}
+.answer table { border-collapse: collapse; margin: 12px 0; display: block; overflow-x: auto; }
+.answer th, .answer td { border: 1px solid var(--line); padding: 6px 10px; font-size: 0.92rem; }
+.answer th { background: var(--bg); }
+.answer a { color: var(--accent); text-decoration: none; font-size: 0.8em; vertical-align: super; }
+
+.citations { border-top: 1px solid var(--line); margin-top: 20px; padding-top: 8px; }
+.citations h3 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+.citation { margin-bottom: 6px; }
+.citation-header {
+  display: flex; gap: 10px; align-items: baseline; width: 100%; text-align: left;
+  background: none; border: none; padding: 4px 0; cursor: pointer; font-size: 0.9rem;
+}
+.citation-num {
+  background: var(--bg); border: 1px solid var(--line); border-radius: 4px;
+  font-size: 0.75rem; padding: 0 6px; color: var(--muted);
+}
+.citation-ref { font-weight: 600; }
+.citation-section { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.citation-quote {
+  margin: 6px 0 12px 26px; padding: 10px 14px; border-left: 3px solid var(--line);
+  color: var(--muted); font-size: 0.88rem; white-space: pre-wrap; max-height: 300px; overflow-y: auto;
+}
+
+.stats { margin-top: 16px; font-size: 0.8rem; color: var(--muted); }
+.muted { color: var(--muted); }
+.evals-raw { font-size: 0.8rem; overflow-x: auto; }
+
+footer { margin-top: 48px; font-size: 0.8rem; color: var(--muted); }
