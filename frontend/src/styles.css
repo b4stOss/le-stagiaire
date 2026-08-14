@@ -80,22 +80,65 @@ nav button {
 nav button:hover { color: var(--ink); }
 nav button.active { color: var(--ink); box-shadow: inset 0 -2px 0 var(--flame); border-radius: 0; }
 
-/* ---------- corpus line ---------- */
+/* ---------- corpus: the four source filings ---------- */
 
-.corpus-line {
-  font-family: var(--font-data);
-  font-size: 0.78rem;
-  letter-spacing: 0.02em;
+.corpus { margin: 0 0 28px; }
+.corpus-intro {
+  font-size: 0.94rem;
   color: var(--ink-soft);
-  text-transform: uppercase;
-  margin: 0 0 18px;
-  border-top: 1px solid var(--rule-strong);
-  border-bottom: 1px solid var(--rule);
-  padding: 8px 0;
+  margin: 0 0 14px;
+  max-width: 64ch;
 }
-.corpus-company { color: var(--ink); }
-.corpus-sep { color: var(--rule-strong); }
-.corpus-meta { text-transform: none; }
+.corpus-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.filing-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 14px 16px 12px;
+  background: var(--sheet);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.filing-card:hover {
+  border-color: var(--flame);
+  box-shadow: 0 2px 8px rgba(22, 19, 15, 0.06);
+}
+.filing-card:focus-visible { outline: 2px solid var(--flame); outline-offset: 2px; }
+.filing-logo {
+  height: 17px;
+  width: auto;
+  max-width: 170px;
+  align-self: flex-start;
+  object-fit: contain;
+  object-position: left center;
+}
+.filing-title {
+  font-size: 0.84rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  padding-right: 18px;
+}
+.filing-meta {
+  font-family: var(--font-data);
+  font-size: 0.72rem;
+  color: var(--ink-soft);
+}
+.filing-open {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  color: var(--rule-strong);
+  transition: color 0.15s ease;
+}
+.filing-card:hover .filing-open { color: var(--flame); }
 
 /* ---------- ask ---------- */
 
@@ -434,15 +477,28 @@ button.trace-head:focus-visible { outline: 2px solid var(--flame); outline-offse
   padding: 1px 6px;
 }
 .evals-cat-score { margin-left: auto; font-family: var(--font-data); font-size: 0.88rem; }
-.bar { display: flex; gap: 3px; margin: 8px 0 6px; }
-.bar-seg { height: 6px; flex: 1; max-width: 34px; border-radius: 1px; }
-.bar-seg.pass { background: var(--ink); }
-.bar-seg.fail { background: var(--rule-strong); }
+.evals-cat-score.full { color: var(--pass); }
+.evals-cat-score.full::before { content: "\2713\00a0"; font-size: 0.8em; }
+.dots { display: flex; flex-wrap: wrap; gap: 5px; margin: 9px 0 7px; }
+.dot { width: 9px; height: 9px; border-radius: 50%; }
+.dot.pass { background: var(--pass); }
+.dot.fail { background: transparent; box-shadow: inset 0 0 0 1.5px var(--fail); }
 .evals-cat-desc { margin: 0; color: var(--ink-soft); font-size: 0.86rem; }
+
+.evals-pct {
+  font-family: var(--font-data);
+  font-size: 0.82rem;
+  padding: 2px 9px;
+  border-radius: 999px;
+  color: var(--ink-soft);
+  background: var(--rule);
+}
+.evals-pct.full { color: var(--pass); background: #e7f2ea; }
 
 .evals-metrics { display: flex; gap: 36px; border-top: 1px solid var(--rule); padding-top: 16px; flex-wrap: wrap; }
 .metric { display: flex; flex-direction: column; }
 .metric-value { font-family: var(--font-data); font-size: 1.3rem; }
+.metric-value.good { color: var(--pass); }
 .metric-label { color: var(--ink-soft); font-size: 0.82rem; max-width: 20ch; }
 
 .evals-questions h3 {
@@ -494,13 +550,25 @@ footer {
 /* ---------- small screens ---------- */
 
 @media (max-width: 700px) {
-  .page { padding: 28px 16px 64px; }
-  .masthead-row { flex-direction: column; gap: 8px; align-items: flex-start; }
+  .page { padding: 24px 16px 56px; }
+  .masthead { margin-bottom: 26px; }
+  .wordmark { font-size: 1.6rem; gap: 9px; }
+  .wordmark .flame-mark { transform: scale(0.85); transform-origin: left center; }
+  .tagline { font-size: 0.92rem; }
   .ask-form { flex-direction: column; }
   .answer-sheet { padding: 20px 18px 16px; }
   .eval-q-body { padding-left: 2px; }
   .evals-metrics { gap: 20px; }
   .trace-line { flex-wrap: wrap; row-gap: 2px; }
+
+  /* filing cards collapse to compact rows so the ask input stays above the fold */
+  .corpus-intro { font-size: 0.9rem; margin-bottom: 12px; }
+  .corpus-grid { grid-template-columns: 1fr; gap: 8px; }
+  .filing-card { flex-direction: row; align-items: center; gap: 10px; padding: 11px 34px 11px 12px; }
+  .filing-title { display: none; }
+  .filing-meta { margin-left: auto; }
+  .filing-logo { height: 15px; max-width: 130px; }
+  .filing-open { top: calc(50% - 6px); }
 }
 
 /* ---------- reduced motion ---------- */

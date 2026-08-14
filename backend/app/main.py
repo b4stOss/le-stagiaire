@@ -1,13 +1,14 @@
 import json
 import queue
+import re
 import threading
 import time
 from dataclasses import asdict
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -90,6 +91,16 @@ def ask(req: AskRequest) -> StreamingResponse:
             yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
 
     return StreamingResponse(stream(), media_type="text/event-stream")
+
+
+@app.get("/api/filings/{slug}")
+def filing(slug: str) -> FileResponse:
+    """Serve a source PDF so the corpus cards can open the real filing."""
+    safe = re.sub(r"[^a-z0-9-]", "", slug.lower())
+    path = DATA_DIR / "filings" / f"{safe}-2025.pdf"
+    if not safe or not path.exists():
+        raise HTTPException(status_code=404, detail="unknown filing")
+    return FileResponse(path, media_type="application/pdf")
 
 
 @app.get("/api/evals")

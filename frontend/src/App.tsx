@@ -19,6 +19,60 @@ const EXAMPLES = [
   "Between Stellantis and ASML, which company was more profitable in 2025?",
 ];
 
+const slugify = (company: string) => company.toLowerCase().replace(/\s+/g, "-");
+
+/** The four source filings, as cards that open the real PDFs. The point is
+    to show what the agent is reading: massive annual reports, not a demo corpus. */
+function Corpus({ documents }: { documents: DocumentInfo[] }) {
+  if (documents.length === 0) return null;
+  const pages = documents.reduce((sum, d) => sum + d.pages, 0);
+  const chunks = documents.reduce((sum, d) => sum + d.chunks, 0);
+  return (
+    <section className="corpus" aria-label="Source filings">
+      <p className="corpus-intro">
+        It works on the FY2025 annual reports of four European companies, all publicly reported
+        Mistral customers or partners: {pages.toLocaleString()} pages parsed with Mistral OCR
+        into {chunks.toLocaleString()} page-anchored chunks, indexed for hybrid search. Answers
+        come only from these filings. Open one to see what it is up against.
+      </p>
+      <div className="corpus-grid">
+        {documents.map((d) => (
+          <a
+            key={d.company}
+            className="filing-card"
+            href={`/api/filings/${slugify(d.company)}`}
+            target="_blank"
+            rel="noreferrer"
+            title={`Open the ${d.company} filing (PDF)`}
+          >
+            <img className="filing-logo" src={`/logos/${slugify(d.company)}.svg`} alt={d.company} />
+            <span className="filing-title">
+              {d.title} {d.fiscal_year}
+            </span>
+            <span className="filing-meta">
+              {d.pages.toLocaleString()} pages · {d.language.toUpperCase()} · PDF
+            </span>
+            <svg
+              className="filing-open"
+              width="13"
+              height="13"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M7 17L17 7M9 7h8v8" />
+            </svg>
+          </a>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function AskTab({ documents }: { documents: DocumentInfo[] }) {
   const [question, setQuestion] = useState("");
   const [searches, setSearches] = useState<SearchEvent[]>([]);
@@ -60,24 +114,9 @@ function AskTab({ documents }: { documents: DocumentInfo[] }) {
     }
   };
 
-  const totalPages = documents.reduce((sum, d) => sum + d.pages, 0);
-
   return (
     <>
-      <p className="corpus-line">
-        {documents.map((d, i) => (
-          <span key={d.company}>
-            {i > 0 && <span className="corpus-sep"> · </span>}
-            <span className="corpus-company">{d.company}</span>
-          </span>
-        ))}
-        {documents.length > 0 && (
-          <span className="corpus-meta">
-            {" "}
-            - FY2025 filings, {totalPages.toLocaleString()} pages indexed
-          </span>
-        )}
-      </p>
+      <Corpus documents={documents} />
 
       <form
         className="ask-form"

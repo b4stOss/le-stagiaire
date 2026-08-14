@@ -60,23 +60,14 @@ const CATEGORY_INFO: Record<string, { label: string; how: string; desc: string }
   },
 };
 
-// The five bands of the Mistral flame; passed segments sweep through them left to right.
-const FLAME_BANDS = ["#ffd800", "#ffaf00", "#ff8205", "#fa500f", "#e10500"];
-
-function Bar({ rate }: { rate: Rate }) {
+/** One dot per golden-set question: filled green = passed, hollow red = failed.
+    Pass/fail is encoded by fill and color, so it survives colorblindness. */
+function Dots({ rate }: { rate: Rate }) {
   return (
-    <div className="bar">
-      {Array.from({ length: rate.total }, (_, i) => {
-        const passed = i < rate.passed;
-        const band = FLAME_BANDS[Math.min(4, Math.floor((i / Math.max(rate.total - 1, 1)) * 5))];
-        return (
-          <span
-            key={i}
-            className={`bar-seg${passed ? " pass" : " fail"}`}
-            style={passed ? { background: band } : undefined}
-          />
-        );
-      })}
+    <div className="dots" role="img" aria-label={`${rate.passed} of ${rate.total} passed`}>
+      {Array.from({ length: rate.total }, (_, i) => (
+        <span key={i} className={`dot${i < rate.passed ? " pass" : " fail"}`} />
+      ))}
     </div>
   );
 }
@@ -127,6 +118,11 @@ export default function Evals() {
           <span className="evals-score">
             {s.overall.passed}/{s.overall.total}
           </span>
+          {s.overall.pct !== null && (
+            <span className={`evals-pct${s.overall.passed === s.overall.total ? " full" : ""}`}>
+              {Math.round(s.overall.pct)}%
+            </span>
+          )}
           <span className="evals-score-label">
             golden-set questions passed · run {data.run_at}
           </span>
@@ -147,11 +143,11 @@ export default function Evals() {
               <div className="evals-cat-head">
                 <span className="evals-cat-label">{info.label}</span>
                 <span className="evals-cat-how">{info.how}</span>
-                <span className="evals-cat-score">
+                <span className={`evals-cat-score${rate.passed === rate.total ? " full" : ""}`}>
                   {rate.passed}/{rate.total}
                 </span>
               </div>
-              <Bar rate={rate} />
+              <Dots rate={rate} />
               <p className="evals-cat-desc">{info.desc}</p>
             </div>
           );
@@ -172,10 +168,12 @@ export default function Evals() {
           <span className="metric-label">gold page found by retrieval</span>
         </div>
         <div className="metric">
-          <span className="metric-value">
-            {s.false_refusal.count}/{s.false_refusal.total}
+          <span className={`metric-value${s.false_refusal.count === 0 ? " good" : ""}`}>
+            {s.false_refusal.count}
           </span>
-          <span className="metric-label">wrong refusals on answerable questions</span>
+          <span className="metric-label">
+            wrong refusals across {s.false_refusal.total} answerable questions
+          </span>
         </div>
       </div>
 
