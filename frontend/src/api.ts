@@ -51,7 +51,19 @@ export interface ErrorEvent {
   message: string;
 }
 
-export type AgentEvent = SearchEvent | TokenEvent | ResetEvent | AnswerEvent | ErrorEvent;
+/** The demo declined to run the question (budget, rate limit, length). Not a failure. */
+export interface NoticeEvent {
+  type: "notice";
+  message: string;
+}
+
+export type AgentEvent =
+  | SearchEvent
+  | TokenEvent
+  | ResetEvent
+  | AnswerEvent
+  | ErrorEvent
+  | NoticeEvent;
 
 export async function getDocuments(): Promise<DocumentInfo[]> {
   const res = await fetch("/api/documents");

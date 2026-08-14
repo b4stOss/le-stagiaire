@@ -1,0 +1,11 @@
+.git
+.venv
+backend/.venv
+frontend/node_modules
+frontend/dist
+frontend/tsconfig.tsbuildinfo
+**/__pycache__
+.env
+# Corpus and OCR cache are mounted at runtime, never baked into the image.
+data
+.DS_Store

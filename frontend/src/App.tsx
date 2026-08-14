@@ -26,14 +26,15 @@ const slugify = (company: string) => company.toLowerCase().replace(/\s+/g, "-");
 function Corpus({ documents }: { documents: DocumentInfo[] }) {
   if (documents.length === 0) return null;
   const pages = documents.reduce((sum, d) => sum + d.pages, 0);
-  const chunks = documents.reduce((sum, d) => sum + d.chunks, 0);
   return (
     <section className="corpus" aria-label="Source filings">
+      <p className="corpus-eyebrow">
+        <span className="corpus-eyebrow-label">Sources</span>
+        {pages.toLocaleString()} pages · FY2025 filings
+      </p>
       <p className="corpus-intro">
-        It works on the FY2025 annual reports of four European companies, all publicly reported
-        Mistral customers or partners: {pages.toLocaleString()} pages parsed with Mistral OCR
-        into {chunks.toLocaleString()} page-anchored chunks, indexed for hybrid search. Answers
-        come only from these filings. Open one to see what it is up against.
+        Indexed with Mistral OCR and embeddings; every answer cites pages from these four
+        documents only.
       </p>
       <div className="corpus-grid">
         {documents.map((d) => (
@@ -79,6 +80,7 @@ function AskTab({ documents }: { documents: DocumentInfo[] }) {
   const [streamText, setStreamText] = useState("");
   const [result, setResult] = useState<AnswerEvent | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const startedAt = useRef(0);
@@ -96,6 +98,7 @@ function AskTab({ documents }: { documents: DocumentInfo[] }) {
     setStreamText("");
     setResult(null);
     setError(null);
+    setNotice(null);
     setElapsed(0);
     startedAt.current = Date.now();
     setRunning(true);
@@ -106,6 +109,7 @@ function AskTab({ documents }: { documents: DocumentInfo[] }) {
         else if (event.type === "reset") setStreamText("");
         else if (event.type === "answer") setResult(event);
         else if (event.type === "error") setError(event.message);
+        else if (event.type === "notice") setNotice(event.message);
       });
     } catch (e) {
       setError(String(e));
@@ -137,7 +141,7 @@ function AskTab({ documents }: { documents: DocumentInfo[] }) {
         </button>
       </form>
 
-      {!result && !running && !error && (
+      {!result && !running && !error && !notice && (
         <div className="examples">
           {EXAMPLES.map((ex) => (
             <button key={ex} className="example" onClick={() => ask(ex)}>
@@ -154,6 +158,8 @@ function AskTab({ documents }: { documents: DocumentInfo[] }) {
         streaming={streamText.length > 0}
         elapsed={elapsed}
       />
+
+      {notice && <div className="notice">{notice}</div>}
 
       {error && (
         <div className="error">
@@ -197,8 +203,8 @@ export default function App() {
       </header>
       <main>{tab === "ask" ? <AskTab documents={documents} /> : <Evals />}</main>
       <footer>
-        Built on Mistral: OCR, embeddings and agent all run on La Plateforme. When the answer
-        is not in the filings, Le Stagiaire says so instead of guessing.
+        Built on Mistral La Plateforme (OCR, embeddings, agent). When the answer is not in
+        the filings, Le Stagiaire says so.
       </footer>
     </div>
   );

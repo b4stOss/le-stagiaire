@@ -1,0 +1,49 @@
+# Production stack: the app plus its own Postgres, behind a reverse proxy.
+# The dev compose (docker-compose.yml) only runs the database; this one runs
+# everything and is what the deployed host uses.
+#
+#   docker compose -f docker-compose.prod.yml up -d --build
+
+services:
+  db:
+    image: pgvector/pgvector:pg17
+    container_name: stagiaire-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: rapport
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: rapport
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rapport -d rapport"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    # No published port: only the app talks to it, over the compose network.
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: stagiaire-app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      MISTRAL_API_KEY: ${MISTRAL_API_KEY:?set MISTRAL_API_KEY in .env}
+      DATABASE_URL: postgresql://rapport:${POSTGRES_PASSWORD}@db:5432/rapport
+      DEMO_DAILY_BUDGET: ${DEMO_DAILY_BUDGET:-150}
+      DEMO_HOURLY_PER_IP: ${DEMO_HOURLY_PER_IP:-12}
+      DEMO_MAX_CONCURRENT: ${DEMO_MAX_CONCURRENT:-3}
+    volumes:
+      # Source PDFs (served by /api/filings), eval results, and the trace log.
+      # Mounted rather than baked in: 100 MB of filings has no place in the image.
+      - ./data:/app/data
+    ports:
+      # Localhost only. Caddy terminates TLS and proxies to this.
+      - "127.0.0.1:8090:8000"
+
+volumes:
+  pgdata:

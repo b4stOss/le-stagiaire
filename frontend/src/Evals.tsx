@@ -41,22 +41,22 @@ const CATEGORY_INFO: Record<string, { label: string; how: string; desc: string }
   numeric: {
     label: "Numeric extraction",
     how: "deterministic",
-    desc: "Exact figures, graded by parsing and comparing numbers, no LLM involved",
+    desc: "Exact figures, no LLM in the grading",
   },
   synthesis: {
     label: "Synthesis",
     how: "LLM judge",
-    desc: "Open questions graded pass/fail against hand-verified key facts",
+    desc: "Graded against hand-verified key facts",
   },
   comparison: {
     label: "Cross-document comparison",
     how: "LLM judge",
-    desc: "Questions that require searching several reports and combining results",
+    desc: "Several reports combined in one answer",
   },
   unanswerable: {
     label: "Unanswerable",
     how: "abstention check",
-    desc: "Traps whose answer is not in the corpus; the agent must decline, not guess",
+    desc: "Traps: the agent must decline, not guess",
   },
 };
 
@@ -128,9 +128,8 @@ export default function Evals() {
           </span>
         </div>
         <p className="evals-note">
-          Every gold answer was hand-verified against the source PDFs. Figures and refusals are
-          graded deterministically; only synthesis and comparison use an LLM judge. This is a
-          regression harness, not a proof: it makes quality measurable across changes.
+          Gold answers hand-verified against the source PDFs; graded deterministically where
+          possible, by an LLM judge otherwise.
         </p>
       </div>
 
