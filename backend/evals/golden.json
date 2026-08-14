@@ -1,0 +1,106 @@
+{
+  "_readme": "Golden set. Gold answers were located in the OCR'd chunks by Claude, then must be hand-verified against the actual PDFs (flip 'verified' to true). Categories: numeric (deterministic grading), synthesis & comparison (LLM judge vs gold_facts), unanswerable (abstention check). gold_pages are PDF page numbers.",
+  "questions": [
+    {
+      "id": "num-01",
+      "category": "numeric",
+      "question": "What was Stellantis' net revenue in 2025?",
+      "gold": { "value": 153508, "unit": "EUR", "scale": "million", "tolerance_pct": 0.5 },
+      "gold_pages": [{ "company": "Stellantis", "pages": [55] }],
+      "verified": false
+    },
+    {
+      "id": "num-02",
+      "category": "numeric",
+      "question": "What net result did Stellantis report for 2025?",
+      "gold": { "value": -22332, "unit": "EUR", "scale": "million", "tolerance_pct": 0.5 },
+      "gold_pages": [{ "company": "Stellantis", "pages": [55, 62] }],
+      "verified": false
+    },
+    {
+      "id": "num-03",
+      "category": "numeric",
+      "question": "How much did ASML spend on R&D in 2025?",
+      "gold": { "value": 4700, "unit": "EUR", "scale": "million", "tolerance_pct": 3 },
+      "gold_pages": [{ "company": "ASML", "pages": [40, 41] }],
+      "verified": false
+    },
+    {
+      "id": "num-04",
+      "category": "numeric",
+      "question": "Quel est le ratio CET1 de BNP Paribas au 31 décembre 2025 ?",
+      "gold": { "value": 12.6, "unit": "%", "scale": "percent", "tolerance_pct": 1 },
+      "gold_pages": [{ "company": "BNP Paribas", "pages": [183, 184, 350] }],
+      "verified": false
+    },
+    {
+      "id": "num-05",
+      "category": "numeric",
+      "question": "Quelle a été la production combinée d'hydrocarbures de TotalEnergies en 2025, en kbep/j ?",
+      "gold": { "value": 2529, "unit": "kboe/d", "scale": "raw", "tolerance_pct": 0.5 },
+      "gold_pages": [{ "company": "TotalEnergies", "pages": [9, 74, 75] }],
+      "verified": false
+    },
+    {
+      "id": "num-06",
+      "category": "numeric",
+      "question": "Quelle est la marge d'intérêts de BNP Paribas pour l'exercice 2025 ?",
+      "gold": { "value": 21203, "unit": "EUR", "scale": "million", "tolerance_pct": 0.5 },
+      "gold_pages": [{ "company": "BNP Paribas", "pages": [169] }],
+      "verified": false
+    },
+    {
+      "id": "num-07",
+      "category": "numeric",
+      "question": "Quelle est la dette nette de TotalEnergies fin 2025 ?",
+      "gold": { "value": 20215, "unit": "USD", "scale": "million", "tolerance_pct": 1 },
+      "gold_pages": [{ "company": "TotalEnergies", "pages": [63] }],
+      "verified": false
+    },
+    {
+      "id": "cmp-01",
+      "category": "comparison",
+      "question": "Between Stellantis and ASML, which company was more profitable in 2025?",
+      "gold_facts": "ASML was clearly more profitable: net income of about EUR 9.6 billion (net margin ~29%). Stellantis reported a net LOSS of about EUR 22.3 billion in 2025.",
+      "gold_pages": [
+        { "company": "Stellantis", "pages": [62] },
+        { "company": "ASML", "pages": [56, 57] }
+      ],
+      "verified": false
+    },
+    {
+      "id": "cmp-02",
+      "category": "comparison",
+      "question": "How did TotalEnergies' hydrocarbon production evolve between 2024 and 2025?",
+      "gold_facts": "Combined production increased from 2,434 kboe/d in 2024 to 2,529 kboe/d in 2025, an increase of roughly 4%.",
+      "gold_pages": [{ "company": "TotalEnergies", "pages": [74, 75] }],
+      "verified": false
+    },
+    {
+      "id": "syn-01",
+      "category": "synthesis",
+      "question": "What drove Stellantis' operating loss in 2025?",
+      "gold_facts": "Main drivers include: platform impairments of EUR 6,583 million (large North America component) following reduced volume and profitability expectations and cancellation of certain vehicle programs; EUR 622 million for the Takata airbags recall campaign; restructuring costs around EUR 913 million. Overall operating loss about EUR 26.3 billion.",
+      "gold_pages": [{ "company": "Stellantis", "pages": [62, 63] }],
+      "verified": false
+    },
+    {
+      "id": "una-01",
+      "category": "unanswerable",
+      "question": "Who is the current president of the United States?",
+      "verified": true
+    },
+    {
+      "id": "una-02",
+      "category": "unanswerable",
+      "question": "What was Airbus' revenue in 2025?",
+      "verified": true
+    },
+    {
+      "id": "una-03",
+      "category": "unanswerable",
+      "question": "Quel est le cours de bourse de BNP Paribas aujourd'hui ?",
+      "verified": true
+    }
+  ]
+}

@@ -1,0 +1,89 @@
+{
+  "run_at": "2026-08-14 14:13",
+  "summary": {
+    "overall": {
+      "passed": 3,
+      "total": 3,
+      "pct": 100
+    },
+    "by_category": {
+      "numeric": {
+        "passed": 2,
+        "total": 2,
+        "pct": 100
+      },
+      "unanswerable": {
+        "passed": 1,
+        "total": 1,
+        "pct": 100
+      }
+    },
+    "citation_accuracy": {
+      "passed": 2,
+      "total": 2,
+      "pct": 100
+    },
+    "retrieval_recall": {
+      "passed": 2,
+      "total": 2,
+      "pct": 100
+    },
+    "correct_abstention": {
+      "passed": 1,
+      "total": 1,
+      "pct": 100
+    },
+    "false_refusal": {
+      "count": 0,
+      "total": 2
+    },
+    "verified_share": {
+      "passed": 1,
+      "total": 3,
+      "pct": 33
+    }
+  },
+  "questions": [
+    {
+      "id": "num-01",
+      "category": "numeric",
+      "question": "What was Stellantis' net revenue in 2025?",
+      "verified": false,
+      "answer": "Stellantis' net revenue in 2025 was **€153,508 million** [c954][c1589][c1590].",
+      "n_searches": 1,
+      "tokens": 3887,
+      "duration_s": 2.26,
+      "passed": true,
+      "citation_ok": true,
+      "retrieval_recall": true,
+      "abstained": false
+    },
+    {
+      "id": "num-04",
+      "category": "numeric",
+      "question": "Quel est le ratio CET1 de BNP Paribas au 31 décembre 2025 ?",
+      "verified": false,
+      "answer": "Le ratio CET1 de BNP Paribas au 31 décembre 2025 est de **12,6 %** [c5884][c5490]. Une autre source précise **12,61 %** [c6004].",
+      "n_searches": 1,
+      "tokens": 8332,
+      "duration_s": 4.85,
+      "passed": true,
+      "citation_ok": true,
+      "retrieval_recall": true,
+      "abstained": false
+    },
+    {
+      "id": "una-01",
+      "category": "unanswerable",
+      "question": "Who is the current president of the United States?",
+      "verified": true,
+      "answer": "The annual reports of ASML, BNP Paribas, Stellantis, and TotalEnergies do not contain information about the current president of the United States. This information is not in the reports.",
+      "n_searches": 0,
+      "tokens": 384,
+      "duration_s": 1.02,
+      "passed": true,
+      "abstained": true,
+      "judge_reasoning": "The assistant correctly identified that the information was not present in the provided documents and explicitly stated this without fabricating an answer."
+    }
+  ]
+}

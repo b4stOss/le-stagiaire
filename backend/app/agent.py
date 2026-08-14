@@ -13,7 +13,7 @@ from typing import Callable
 
 from app.config import settings
 from app.db import get_conn
-from app.mistral import get_client
+from app.mistral import chat_complete
 from app.retrieval import RetrievedChunk, hybrid_search
 
 MAX_ITERATIONS = 8
@@ -76,6 +76,9 @@ class AgentAnswer:
     prompt_tokens: int = 0
     completion_tokens: int = 0
     capped: bool = False
+    # every chunk the agent saw in search results (not only the cited ones),
+    # needed to compute retrieval recall in the evals
+    retrieved: list[dict] = field(default_factory=list)
 
 
 def _list_companies() -> list[str]:
@@ -146,7 +149,6 @@ def answer_question(
     on_event: Callable[[dict], None] | None = None,
 ) -> AgentAnswer:
     """Run the agent loop. on_event receives progress dicts (for SSE streaming)."""
-    client = get_client()
     companies = _list_companies()
     seen_chunks: dict[int, RetrievedChunk] = {}
     result = AgentAnswer(answer="", citations=[])
@@ -159,7 +161,7 @@ def answer_question(
     for iteration in range(MAX_ITERATIONS + 1):
         result.iterations = iteration + 1
         capped = iteration == MAX_ITERATIONS
-        resp = client.chat.complete(
+        resp = chat_complete(
             model=settings.agent_model,
             messages=messages,
             tools=[SEARCH_TOOL],
@@ -203,4 +205,8 @@ def answer_question(
             )
 
     result.citations = _resolve_citations(result.answer, seen_chunks)
+    result.retrieved = [
+        {"company": c.company, "page_start": c.page_start, "page_end": c.page_end}
+        for c in seen_chunks.values()
+    ]
     return result
