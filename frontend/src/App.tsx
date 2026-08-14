@@ -1,75 +1,39 @@
-import { useEffect, useRef, useState } from "react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import { useEffect, useState } from "react";
+import Answer from "./Answer";
+import Evals from "./Evals";
 import {
   AgentEvent,
   AnswerEvent,
-  Citation,
   DocumentInfo,
   SearchEvent,
   askStream,
   getDocuments,
-  getEvals,
 } from "./api";
 
 const EXAMPLES = [
   "What was Stellantis' net revenue in 2025, and how did it evolve vs 2024?",
-  "Quelle est la dette nette de TotalEnergies fin 2025 ?",
+  "Quelle est la dette nette hors location de TotalEnergies fin 2025 ?",
   "Compare the climate-related risk factors of TotalEnergies and BNP Paribas.",
-  "How much did ASML spend on R&D in 2025?",
+  "Between Stellantis and ASML, which company was more profitable in 2025?",
 ];
 
-/** Replace [c123] / [c123, c456] markers with numbered footnote links. */
-function linkCitations(answer: string, citations: Citation[]): string {
-  const indexOf = new Map(citations.map((c, i) => [c.chunk_id, i + 1]));
-  return answer.replace(/\[([^\]]*?c\d+[^\]]*?)\]/g, (whole, group: string) => {
-    const ids = [...group.matchAll(/c(\d+)/g)].map((m) => Number(m[1]));
-    const nums = ids.map((id) => indexOf.get(id)).filter(Boolean);
-    if (nums.length === 0) return whole;
-    return nums.map((n) => `[[${n}]](#cite-${n})`).join(" ");
-  });
-}
-
-function AgentActivity({ searches, running }: { searches: SearchEvent[]; running: boolean }) {
+function AgentLog({ searches, running }: { searches: SearchEvent[]; running: boolean }) {
   if (searches.length === 0 && !running) return null;
   return (
-    <div className="activity">
+    <div className="agent-log" aria-live="polite">
       {searches.map((s, i) => (
-        <div key={i} className="activity-line">
-          <span className="activity-icon">⌕</span>
-          <span>
-            {s.query}
-            {s.company ? <span className="activity-company"> · {s.company}</span> : null}
-          </span>
+        <div key={i} className="log-line">
+          <span className="log-verb">search</span>
+          <span className="log-query">{s.query}</span>
+          {s.company && <span className="log-scope">{s.company}</span>}
         </div>
       ))}
-      {running && <div className="activity-line pulse">thinking…</div>}
-    </div>
-  );
-}
-
-function CitationList({ citations }: { citations: Citation[] }) {
-  const [open, setOpen] = useState<number | null>(null);
-  if (citations.length === 0) return null;
-  return (
-    <div className="citations">
-      <h3>Sources</h3>
-      {citations.map((c, i) => {
-        const pages =
-          c.page_start === c.page_end ? `p. ${c.page_start}` : `p. ${c.page_start}-${c.page_end}`;
-        return (
-          <div key={c.chunk_id} className="citation" id={`cite-${i + 1}`}>
-            <button className="citation-header" onClick={() => setOpen(open === i ? null : i)}>
-              <span className="citation-num">{i + 1}</span>
-              <span className="citation-ref">
-                {c.company} {c.fiscal_year}, {pages}
-              </span>
-              {c.section_path && <span className="citation-section">{c.section_path}</span>}
-            </button>
-            {open === i && <blockquote className="citation-quote">{c.quote}</blockquote>}
-          </div>
-        );
-      })}
+      {running && (
+        <div className="log-line pulse">
+          <span className="log-verb">agent</span>
+          <span className="log-query">reading results…</span>
+        </div>
+      )}
     </div>
   );
 }
@@ -80,7 +44,6 @@ function AskTab({ documents }: { documents: DocumentInfo[] }) {
   const [result, setResult] = useState<AnswerEvent | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
-  const answerRef = useRef<HTMLDivElement>(null);
 
   const ask = async (q: string) => {
     if (!q.trim() || running) return;
@@ -102,15 +65,24 @@ function AskTab({ documents }: { documents: DocumentInfo[] }) {
     }
   };
 
+  const totalPages = documents.reduce((sum, d) => sum + d.pages, 0);
+
   return (
     <>
-      <div className="corpus">
-        {documents.map((d) => (
-          <span key={d.company} className="chip" title={`${d.title} · ${d.chunks} chunks`}>
-            {d.company} <span className="chip-meta">{d.fiscal_year} · {d.pages} p.</span>
+      <p className="corpus-line">
+        {documents.map((d, i) => (
+          <span key={d.company}>
+            {i > 0 && <span className="corpus-sep"> · </span>}
+            <span className="corpus-company">{d.company}</span>
           </span>
         ))}
-      </div>
+        {documents.length > 0 && (
+          <span className="corpus-meta">
+            {" "}
+            — FY2025 filings, {totalPages.toLocaleString()} pages indexed
+          </span>
+        )}
+      </p>
 
       <form
         className="ask-form"
@@ -122,15 +94,16 @@ function AskTab({ documents }: { documents: DocumentInfo[] }) {
         <input
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
-          placeholder="Ask anything about these annual reports…"
+          placeholder="Ask about these filings, in English or French…"
           disabled={running}
+          aria-label="Question"
         />
         <button type="submit" disabled={running || !question.trim()}>
-          {running ? "…" : "Ask"}
+          {running ? "Working…" : "Ask"}
         </button>
       </form>
 
-      {!result && !running && (
+      {!result && !running && !error && (
         <div className="examples">
           {EXAMPLES.map((ex) => (
             <button key={ex} className="example" onClick={() => ask(ex)}>
@@ -140,37 +113,17 @@ function AskTab({ documents }: { documents: DocumentInfo[] }) {
         </div>
       )}
 
-      <AgentActivity searches={searches} running={running} />
+      <AgentLog searches={searches} running={running} />
 
-      {error && <div className="error">{error}</div>}
-
-      {result && (
-        <div className="answer" ref={answerRef}>
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>
-            {linkCitations(result.answer, result.citations)}
-          </ReactMarkdown>
-          <CitationList citations={result.citations} />
-          <div className="stats">
-            {result.trace.length} searches · {result.iterations} steps ·{" "}
-            {result.prompt_tokens + result.completion_tokens} tokens · {result.duration_s}s
-            {result.capped ? " · hit iteration cap" : ""}
-          </div>
+      {error && (
+        <div className="error">
+          The request failed: {error}. Check that the server is running, then try again.
         </div>
       )}
+
+      {result && <Answer result={result} />}
     </>
   );
-}
-
-function EvalsTab() {
-  const [data, setData] = useState<Record<string, unknown> | null>(null);
-  useEffect(() => {
-    getEvals().then(setData);
-  }, []);
-  if (!data) return <p className="muted">Loading…</p>;
-  if (data.status === "not_run") {
-    return <p className="muted">Evals have not been run yet. Coming on day 3.</p>;
-  }
-  return <pre className="evals-raw">{JSON.stringify(data, null, 2)}</pre>;
 }
 
 export default function App() {
@@ -183,21 +136,26 @@ export default function App() {
 
   return (
     <div className="page">
-      <header>
-        <h1>Rapport</h1>
-        <p className="tagline">An analyst agent over annual reports, built on Mistral.</p>
-        <nav>
-          <button className={tab === "ask" ? "active" : ""} onClick={() => setTab("ask")}>
-            Ask
-          </button>
-          <button className={tab === "evals" ? "active" : ""} onClick={() => setTab("evals")}>
-            Evals
-          </button>
-        </nav>
+      <header className="masthead">
+        <div className="masthead-row">
+          <h1 className="wordmark">Rapport</h1>
+          <nav aria-label="Sections">
+            <button className={tab === "ask" ? "active" : ""} onClick={() => setTab("ask")}>
+              Ask
+            </button>
+            <button className={tab === "evals" ? "active" : ""} onClick={() => setTab("evals")}>
+              Evals
+            </button>
+          </nav>
+        </div>
+        <p className="tagline">
+          An analyst agent over annual reports. Every figure cites its page.
+        </p>
       </header>
-      <main>{tab === "ask" ? <AskTab documents={documents} /> : <EvalsTab />}</main>
+      <main>{tab === "ask" ? <AskTab documents={documents} /> : <Evals />}</main>
       <footer>
-        Answers are grounded in the 2025 annual reports listed above, with page-level citations.
+        Built on Mistral: OCR, embeddings and agent all run on La Plateforme.
+        Answers come only from the filings; when the information is not there, the agent says so.
       </footer>
     </div>
   );
