@@ -9,6 +9,19 @@ from app.mistral import get_client
 MAX_UPLOAD_BYTES = 45 * 1024 * 1024  # API limit is ~50 MB per document; stay under it
 
 
+def _inline_tables(page) -> str:
+    """Tables come back as separate attachments referenced as [tbl-N.md](tbl-N.md)
+    in the page markdown; put their content back at the reference point."""
+    markdown = page.markdown
+    for table in page.tables or []:
+        ref = f"[{table.id}]({table.id})"
+        if ref in markdown:
+            markdown = markdown.replace(ref, f"\n{table.content}\n")
+        else:  # reference missing: keep the data anyway
+            markdown += f"\n\n{table.content}\n"
+    return markdown
+
+
 def _ocr_one(pdf_name: str, pdf_bytes: bytes) -> list[dict]:
     client = get_client()
     uploaded = client.files.upload(
@@ -21,7 +34,7 @@ def _ocr_one(pdf_name: str, pdf_bytes: bytes) -> list[dict]:
         document={"type": "document_url", "document_url": signed.url},
         table_format="markdown",
     )
-    return [{"page": p.index + 1, "markdown": p.markdown} for p in result.pages]
+    return [{"page": p.index + 1, "markdown": _inline_tables(p)} for p in result.pages]
 
 
 def _split_pdf(pdf_path: Path, parts: int) -> list[bytes]:
