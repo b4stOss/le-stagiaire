@@ -177,7 +177,7 @@ export default function App() {
   const [tab, setTab] = useState<"ask" | "evals">("ask");
 
   useEffect(() => {
-    getDocuments().then(setDocuments);
+    getDocuments().catch(() => []).then(setDocuments);
   }, []);
 
   return (

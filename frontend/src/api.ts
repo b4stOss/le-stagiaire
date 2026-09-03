@@ -65,9 +65,54 @@ export type AgentEvent =
   | ErrorEvent
   | NoticeEvent;
 
-export async function getDocuments(): Promise<DocumentInfo[]> {
-  const res = await fetch("/api/documents");
+export interface Rate {
+  passed: number;
+  total: number;
+  pct: number | null;
+}
+
+export interface EvalQuestion {
+  id: string;
+  category: string;
+  question: string;
+  verified: boolean;
+  answer: string;
+  passed: boolean;
+  judge_reasoning?: string;
+  citation_ok?: boolean;
+  retrieval_recall?: boolean;
+  abstained?: boolean;
+  n_searches: number;
+  duration_s: number;
+}
+
+export interface EvalResults {
+  status?: string;
+  run_at?: string;
+  summary?: {
+    overall: Rate;
+    by_category: Record<string, Rate>;
+    citation_accuracy: Rate;
+    retrieval_recall: Rate;
+    correct_abstention: Rate;
+    false_refusal: { count: number; total: number };
+    verified_share: Rate;
+  };
+  questions?: EvalQuestion[];
+}
+
+async function getJson<T>(url: string): Promise<T> {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`${url}: ${res.status}`);
   return res.json();
+}
+
+export function getDocuments(): Promise<DocumentInfo[]> {
+  return getJson("/api/documents");
+}
+
+export function getEvals(): Promise<EvalResults> {
+  return getJson("/api/evals");
 }
 
 export async function askStream(
@@ -79,6 +124,7 @@ export async function askStream(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ question }),
   });
+  if (!res.ok) throw new Error(`/api/ask: ${res.status}`);
   if (!res.body) throw new Error("no response body");
 
   const reader = res.body.getReader();
@@ -99,7 +145,3 @@ export async function askStream(
   }
 }
 
-export async function getEvals(): Promise<Record<string, unknown>> {
-  const res = await fetch("/api/evals");
-  return res.json();
-}

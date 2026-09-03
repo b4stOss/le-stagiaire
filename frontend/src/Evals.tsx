@@ -1,41 +1,5 @@
 import { useEffect, useState } from "react";
-import { getEvals } from "./api";
-
-interface Rate {
-  passed: number;
-  total: number;
-  pct: number | null;
-}
-
-interface EvalQuestion {
-  id: string;
-  category: string;
-  question: string;
-  verified: boolean;
-  answer: string;
-  passed: boolean;
-  judge_reasoning?: string;
-  citation_ok?: boolean;
-  retrieval_recall?: boolean;
-  abstained?: boolean;
-  n_searches: number;
-  duration_s: number;
-}
-
-interface EvalResults {
-  status?: string;
-  run_at?: string;
-  summary?: {
-    overall: Rate;
-    by_category: Record<string, Rate>;
-    citation_accuracy: Rate;
-    retrieval_recall: Rate;
-    correct_abstention: Rate;
-    false_refusal: { count: number; total: number };
-    verified_share: Rate;
-  };
-  questions?: EvalQuestion[];
-}
+import { EvalQuestion, EvalResults, Rate, getEvals } from "./api";
 
 const CATEGORY_INFO: Record<string, { label: string; how: string; desc: string }> = {
   numeric: {
@@ -100,10 +64,12 @@ function QuestionRow({ q }: { q: EvalQuestion }) {
 
 export default function Evals() {
   const [data, setData] = useState<EvalResults | null>(null);
+  const [error, setError] = useState<string | null>(null);
   useEffect(() => {
-    getEvals().then((d) => setData(d as EvalResults));
+    getEvals().then(setData).catch((e) => setError(String(e)));
   }, []);
 
+  if (error) return <p className="error">Could not load the evals: {error}</p>;
   if (!data) return <p className="muted">Loading…</p>;
   if (data.status === "not_run" || !data.summary) {
     return <p className="muted">Evals have not been run yet.</p>;

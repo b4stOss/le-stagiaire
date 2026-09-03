@@ -65,3 +65,5 @@ uv run uvicorn app.main:app
 ```
 
 The public demo is rate-limited and capped daily, since every question spends real tokens.
+
+Checks (from `backend/`): `uv run pytest`, `uv run ruff check`, `uv run ruff format --check`, `uv run pyright`. The tests cover the pure parts (chunking, numeric grading, citation resolution, demo guardrails) and need neither the database nor an API key.
