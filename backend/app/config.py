@@ -6,6 +6,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 DATA_DIR = REPO_ROOT / "data"
 FILINGS_DIR = DATA_DIR / "filings"
 OCR_CACHE_DIR = DATA_DIR / "ocr"
+FRONTEND_DIST = REPO_ROOT / "frontend" / "dist"
 
 
 class Settings(BaseSettings):
@@ -19,5 +20,12 @@ class Settings(BaseSettings):
     embed_model: str = "mistral-embed"
     ocr_model: str = "mistral-ocr-latest"
 
+    # Public demo guardrails: the app answers on a personal API key, every question costs ~1 cent.
+    demo_daily_budget: int = 150
+    demo_hourly_per_ip: int = 12
+    demo_max_concurrent: int = 3
 
-settings = Settings()
+    cors_origins: list[str] = ["http://localhost:5173"]
+
+
+settings = Settings()  # pyright: ignore[reportCallIssue]  # fields come from the environment
