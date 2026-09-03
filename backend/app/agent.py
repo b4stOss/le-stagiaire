@@ -3,6 +3,9 @@
 One tool, several searches allowed, hard iteration cap, grounding and
 citation rules enforced by the system prompt, citations resolved
 server-side from the chunk ids the model actually received.
+
+Read top-down: the loop, then one model turn, then the streaming details,
+then the search tool, then the helpers.
 """
 
 import json
@@ -69,6 +72,7 @@ SEARCH_TOOL = {
 _MARKER_GROUP_RE = re.compile(r"\[([^\]]*?c\d+[^\]]*?)\]")
 _CHUNK_ID_RE = re.compile(r"c(\d+)")
 
+# Progress events for the UI: {"type": "search" | "token" | "reset", ...}
 EventCallback = Callable[[dict], None]
 
 
@@ -96,17 +100,196 @@ class AgentAnswer:
 
 @dataclass
 class ModelTurn:
+    """What one call to the model produced, whether it was streamed or not."""
+
     text: str
     tool_calls: list[dict]
     prompt_tokens: int = 0
     completion_tokens: int = 0
 
 
-@lru_cache(maxsize=1)
-def _list_companies() -> tuple[str, ...]:
-    """The corpus only changes when a filing is ingested, which restarts nothing: cached per process."""
-    with get_conn() as conn:
-        return tuple(r[0] for r in conn.execute("SELECT DISTINCT company FROM documents ORDER BY company"))
+# ------------------------------------------------------------------ the loop
+
+
+def answer_question(question: str, on_event: EventCallback | None = None) -> AgentAnswer:
+    """Ask the model; while it asks for searches, run them and ask again; stop at its first
+    plain answer or at the iteration cap. on_event streams progress to the UI:
+    'search' when a tool call fires, 'token' for answer text, 'reset' when streamed
+    text turns out to be preamble before a tool call."""
+    seen_chunks: dict[int, RetrievedChunk] = {}
+    result = AgentAnswer(answer="", citations=[])
+    messages: list = [
+        {"role": "system", "content": SYSTEM_PROMPT.format(companies=", ".join(_list_companies()))},
+        {"role": "user", "content": question},
+    ]
+
+    for iteration in range(1, MAX_ITERATIONS + 2):
+        capped = iteration > MAX_ITERATIONS
+        turn = _model_turn(messages, tool_choice="none" if capped else "auto", on_event=on_event)
+        result.iterations = iteration
+        result.prompt_tokens += turn.prompt_tokens
+        result.completion_tokens += turn.completion_tokens
+        log.info("iteration %d: %d tool calls, %d chars of text", iteration, len(turn.tool_calls), len(turn.text))
+
+        if not turn.tool_calls:
+            result.answer = turn.text
+            result.capped = capped
+            break
+
+        if turn.text and on_event:
+            on_event({"type": "reset"})  # text before a tool call is thinking aloud, not the answer
+        messages.append({"role": "assistant", "content": turn.text, "tool_calls": turn.tool_calls})
+        for tool_call in turn.tool_calls:
+            tool_message, record = _run_search(tool_call, seen_chunks, on_event)
+            messages.append(tool_message)
+            result.trace.append(record)
+
+    result.citations = resolve_citations(result.answer, seen_chunks)
+    result.retrieved = [
+        {"company": c.company, "page_start": c.page_start, "page_end": c.page_end} for c in seen_chunks.values()
+    ]
+    return result
+
+
+# ------------------------------------------------------------------ one model turn
+
+
+def _model_turn(messages: list, tool_choice: str, on_event: EventCallback | None) -> ModelTurn:
+    """Streamed call so the UI gets tokens as they come; if the stream drops mid-way,
+    the same call is replayed without streaming."""
+    try:
+        return _stream_turn(messages, tool_choice, on_event)
+    except Exception:
+        log.warning("streamed call failed, replaying without streaming", exc_info=True)
+        return _complete_turn(messages, tool_choice)
+
+
+def _model_kwargs(messages: list, tool_choice: str) -> dict:
+    return {
+        "model": settings.agent_model,
+        "messages": messages,
+        "tools": [SEARCH_TOOL],
+        "tool_choice": tool_choice,
+        "temperature": TEMPERATURE,
+    }
+
+
+def _complete_turn(messages: list, tool_choice: str) -> ModelTurn:
+    resp = get_client().chat.complete(**_model_kwargs(messages, tool_choice))
+    msg = resp.choices[0].message
+    if msg is None:
+        raise RuntimeError("chat completion returned no message")
+    tool_calls = [
+        {"id": tc.id, "type": "function", "function": {"name": tc.function.name, "arguments": tc.function.arguments}}
+        for tc in (msg.tool_calls or [])
+    ]
+    return ModelTurn(
+        text=content_to_text(msg.content).strip(),
+        tool_calls=tool_calls,
+        prompt_tokens=(resp.usage.prompt_tokens or 0) if resp.usage else 0,
+        completion_tokens=(resp.usage.completion_tokens or 0) if resp.usage else 0,
+    )
+
+
+# ------------------------------------------------------------------ streaming
+#
+# A streamed response is a sequence of chunks, each carrying a delta: a fragment of
+# text, and/or fragments of tool calls. Text fragments are forwarded to the UI as they
+# arrive. Tool calls arrive in pieces too (id in one chunk, name in another, the JSON
+# arguments spread over several), interleaved when there are several calls; each piece
+# carries the index of the call it belongs to, which is what the accumulator keys on.
+
+
+def _stream_turn(messages: list, tool_choice: str, on_event: EventCallback | None) -> ModelTurn:
+    text_parts: list[str] = []
+    calls = ToolCallAccumulator()
+    prompt_tokens = completion_tokens = 0
+    with get_client().chat.stream(**_model_kwargs(messages, tool_choice)) as stream:
+        for event in stream:
+            chunk = event.data
+            if chunk.usage:  # sent once, on the last chunk
+                prompt_tokens = chunk.usage.prompt_tokens or 0
+                completion_tokens = chunk.usage.completion_tokens or 0
+            if not chunk.choices:
+                continue
+            delta = chunk.choices[0].delta
+            piece = content_to_text(delta.content)
+            if piece:
+                text_parts.append(piece)
+                if on_event:
+                    on_event({"type": "token", "text": piece})
+            calls.add(delta.tool_calls)
+    return ModelTurn(
+        text="".join(text_parts).strip(),
+        tool_calls=calls.calls(),
+        prompt_tokens=prompt_tokens,
+        completion_tokens=completion_tokens,
+    )
+
+
+class ToolCallAccumulator:
+    """Rebuild complete tool calls from streamed fragments, keyed by call index."""
+
+    def __init__(self) -> None:
+        self._calls: dict[int, dict] = {}
+
+    def add(self, fragments) -> None:
+        for fragment in fragments or []:
+            index = fragment.index if fragment.index is not None else len(self._calls)
+            call = self._calls.setdefault(
+                index, {"id": "", "type": "function", "function": {"name": "", "arguments": ""}}
+            )
+            if fragment.id:
+                call["id"] = fragment.id
+            if fragment.function and fragment.function.name:
+                call["function"]["name"] = fragment.function.name
+            if fragment.function and fragment.function.arguments:
+                args = fragment.function.arguments
+                call["function"]["arguments"] += json.dumps(args) if isinstance(args, dict) else args
+
+    def calls(self) -> list[dict]:
+        return [self._calls[i] for i in sorted(self._calls)]
+
+
+def content_to_text(content) -> str:
+    """Model content is either a string, or a list of parts (text / reference) in
+    Mistral's native citation format. Flatten both to text with inline [cN] markers."""
+    if content is None:
+        return ""
+    if isinstance(content, str):
+        return content
+    parts: list[str] = []
+    for part in content:
+        if part.type == "text":
+            parts.append(part.text)
+        elif part.type == "reference":
+            parts.append(" " + "".join(rid if rid.startswith("[") else f"[{rid}]" for rid in part.reference_ids))
+    return "".join(parts)
+
+
+# ------------------------------------------------------------------ the search tool
+
+
+def _run_search(tool_call: dict, seen_chunks: dict[int, RetrievedChunk], on_event: EventCallback | None):
+    """Run one search_filings call. Returns the tool message for the model and a trace record."""
+    args = json.loads(tool_call["function"]["arguments"])
+    query, company = args.get("query", ""), args.get("company")
+    if on_event:
+        on_event({"type": "search", "query": query, "company": company})
+
+    t0 = time.monotonic()
+    try:
+        chunks = hybrid_search(query, company=company, k=RESULTS_PER_SEARCH)
+        seen_chunks.update((c.chunk_id, c) for c in chunks)
+        content = _format_results(chunks)
+    except Exception as exc:
+        log.warning("search failed for %r: %s", query, exc)
+        chunks, content = [], json.dumps({"error": str(exc)})  # the model can rephrase or give up
+    latency_ms = int((time.monotonic() - t0) * 1000)
+
+    tool_message = {"role": "tool", "name": "search_filings", "content": content, "tool_call_id": tool_call["id"]}
+    record = ToolCallRecord(query=query, company=company, n_results=len(chunks), latency_ms=latency_ms)
+    return tool_message, record
 
 
 def _format_results(chunks: list[RetrievedChunk]) -> str:
@@ -121,22 +304,7 @@ def _format_results(chunks: list[RetrievedChunk]) -> str:
     return "\n\n---\n\n".join(parts)
 
 
-def content_to_text(content) -> str:
-    """The model may answer as plain text with [cN] markers, or as a list of
-    TextChunk/ReferenceChunk parts (Mistral's native citation format, where the
-    reference ids are the chunk markers we exposed). Normalize both to text
-    with inline [cN] markers."""
-    if isinstance(content, str):
-        return content
-    parts: list[str] = []
-    for part in content or []:
-        kind = getattr(part, "type", None)
-        if kind == "text":
-            parts.append(part.text)
-        elif kind == "reference":
-            refs = "".join(rid if str(rid).startswith("[") else f"[{rid}]" for rid in part.reference_ids)
-            parts.append(f" {refs}")
-    return "".join(parts)
+# ------------------------------------------------------------------ helpers
 
 
 def resolve_citations(answer: str, seen_chunks: dict[int, RetrievedChunk]) -> list[dict]:
@@ -163,167 +331,8 @@ def resolve_citations(answer: str, seen_chunks: dict[int, RetrievedChunk]) -> li
     return citations
 
 
-class ToolCallAccumulator:
-    """Rebuild complete tool calls from streamed deltas (id, name and argument fragments
-    arrive across several chunks, keyed by index)."""
-
-    def __init__(self) -> None:
-        self._calls: dict[int, dict] = {}
-
-    def add(self, delta_tool_calls) -> None:
-        for tc in delta_tool_calls or []:
-            idx = getattr(tc, "index", None)
-            if idx is None:
-                idx = len(self._calls)
-            slot = self._calls.setdefault(
-                idx, {"id": "", "type": "function", "function": {"name": "", "arguments": ""}}
-            )
-            if tc.id:
-                slot["id"] = tc.id
-            if tc.function:
-                if tc.function.name:
-                    slot["function"]["name"] = tc.function.name
-                args = tc.function.arguments
-                if isinstance(args, dict):
-                    slot["function"]["arguments"] += json.dumps(args)
-                elif args:
-                    slot["function"]["arguments"] += args
-
-    def calls(self) -> list[dict]:
-        return [self._calls[i] for i in sorted(self._calls)]
-
-
-def _model_kwargs(messages: list, tool_choice: str) -> dict:
-    return {
-        "model": settings.agent_model,
-        "messages": messages,
-        "tools": [SEARCH_TOOL],
-        "tool_choice": tool_choice,
-        "temperature": TEMPERATURE,
-    }
-
-
-def _stream_turn(messages: list, tool_choice: str, on_token: Callable[[str], None] | None) -> ModelTurn:
-    turn = ModelTurn(text="", tool_calls=[])
-    text_parts: list[str] = []
-    calls = ToolCallAccumulator()
-    with get_client().chat.stream(**_model_kwargs(messages, tool_choice)) as stream:
-        for event in stream:
-            chunk = event.data
-            if chunk.usage:
-                turn.prompt_tokens = chunk.usage.prompt_tokens or 0
-                turn.completion_tokens = chunk.usage.completion_tokens or 0
-            if not chunk.choices:
-                continue
-            delta = chunk.choices[0].delta
-            piece = content_to_text(delta.content) if delta.content else ""
-            if piece:
-                text_parts.append(piece)
-                if on_token:
-                    on_token(piece)
-            calls.add(delta.tool_calls)
-    turn.text = "".join(text_parts).strip()
-    turn.tool_calls = calls.calls()
-    return turn
-
-
-def _complete_turn(messages: list, tool_choice: str) -> ModelTurn:
-    resp = get_client().chat.complete(**_model_kwargs(messages, tool_choice))
-    msg = resp.choices[0].message
-    if msg is None:
-        raise RuntimeError("chat completion returned no message")
-    tool_calls = [
-        {
-            "id": tc.id,
-            "type": "function",
-            "function": {"name": tc.function.name, "arguments": tc.function.arguments},
-        }
-        for tc in (msg.tool_calls or [])
-    ]
-    turn = ModelTurn(text=content_to_text(msg.content).strip(), tool_calls=tool_calls)
-    if resp.usage:
-        turn.prompt_tokens = resp.usage.prompt_tokens or 0
-        turn.completion_tokens = resp.usage.completion_tokens or 0
-    return turn
-
-
-def _model_turn(messages: list, tool_choice: str, on_token: Callable[[str], None] | None) -> ModelTurn:
-    """Streamed call, with a non-streaming fallback if the stream drops mid-way."""
-    try:
-        return _stream_turn(messages, tool_choice, on_token)
-    except Exception:
-        log.warning("streamed call failed, falling back to a non-streaming request", exc_info=True)
-        return _complete_turn(messages, tool_choice)
-
-
-def _run_search(tool_call: dict, seen_chunks: dict[int, RetrievedChunk], on_event: EventCallback | None):
-    """Execute one search_filings call. Returns (tool message, trace record)."""
-    args = json.loads(tool_call["function"]["arguments"])
-    query, company = args.get("query", ""), args.get("company")
-    if on_event:
-        on_event({"type": "search", "query": query, "company": company})
-    t0 = time.monotonic()
-    try:
-        chunks = hybrid_search(query, company=company, k=RESULTS_PER_SEARCH)
-        content = _format_results(chunks)
-        seen_chunks.update((c.chunk_id, c) for c in chunks)
-    except Exception as exc:
-        # the model gets the error as a tool result and can rephrase or give up
-        log.warning("search failed for %r: %s", query, exc)
-        chunks, content = [], json.dumps({"error": str(exc)})
-    record = ToolCallRecord(
-        query=query, company=company, n_results=len(chunks), latency_ms=int((time.monotonic() - t0) * 1000)
-    )
-    message = {
-        "role": "tool",
-        "name": tool_call["function"]["name"],
-        "content": content,
-        "tool_call_id": tool_call["id"],
-    }
-    return message, record
-
-
-def answer_question(question: str, on_event: EventCallback | None = None) -> AgentAnswer:
-    """Run the agent loop. on_event receives progress dicts (for SSE streaming):
-    'search' when a tool call fires, 'token' for streamed answer text, 'reset'
-    when streamed text turns out to be pre-tool-call preamble to discard."""
-    seen_chunks: dict[int, RetrievedChunk] = {}
-    result = AgentAnswer(answer="", citations=[])
-    messages: list = [
-        {"role": "system", "content": SYSTEM_PROMPT.format(companies=", ".join(_list_companies()))},
-        {"role": "user", "content": question},
-    ]
-    on_token = (lambda t: on_event({"type": "token", "text": t})) if on_event else None
-
-    for iteration in range(MAX_ITERATIONS + 1):
-        result.iterations = iteration + 1
-        capped = iteration == MAX_ITERATIONS
-        turn = _model_turn(messages, "none" if capped else "auto", on_token)
-        result.prompt_tokens += turn.prompt_tokens
-        result.completion_tokens += turn.completion_tokens
-        log.info(
-            "iteration %d: %d tool calls, %d chars of text",
-            iteration + 1,
-            len(turn.tool_calls),
-            len(turn.text),
-        )
-
-        if not turn.tool_calls:
-            result.answer = turn.text
-            result.capped = capped
-            break
-
-        # any text streamed before the tool calls was preamble, not the answer
-        if turn.text and on_event:
-            on_event({"type": "reset"})
-        messages.append({"role": "assistant", "content": turn.text, "tool_calls": turn.tool_calls})
-        for tc in turn.tool_calls:
-            message, record = _run_search(tc, seen_chunks, on_event)
-            messages.append(message)
-            result.trace.append(record)
-
-    result.citations = resolve_citations(result.answer, seen_chunks)
-    result.retrieved = [
-        {"company": c.company, "page_start": c.page_start, "page_end": c.page_end} for c in seen_chunks.values()
-    ]
-    return result
+@lru_cache(maxsize=1)
+def _list_companies() -> tuple[str, ...]:
+    """The corpus only changes when a filing is ingested, which restarts the app: cached per process."""
+    with get_conn() as conn:
+        return tuple(r[0] for r in conn.execute("SELECT DISTINCT company FROM documents ORDER BY company"))
