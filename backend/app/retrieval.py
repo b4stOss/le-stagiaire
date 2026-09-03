@@ -7,12 +7,16 @@ the French and English configurations because the user's question language
 is independent of each document's language.
 """
 
+import logging
+import time
 from dataclasses import dataclass
 
 from pgvector import Vector
 
 from app.db import get_conn
 from app.mistral import embed_texts
+
+log = logging.getLogger(__name__)
 
 RRF_K = 60
 CANDIDATES_PER_RETRIEVER = 50
@@ -72,18 +76,22 @@ class RetrievedChunk:
     score: float
 
 
+def pages_label(page_start: int, page_end: int) -> str:
+    return f"p. {page_start}" if page_start == page_end else f"p. {page_start}-{page_end}"
+
+
 def hybrid_search(query: str, company: str | None = None, k: int = 10) -> list[RetrievedChunk]:
+    t0 = time.monotonic()
     qvec = embed_texts([query])[0]
+    params = {
+        "q": query,
+        "qvec": Vector(qvec),
+        "company": company,
+        "cand": CANDIDATES_PER_RETRIEVER,
+        "rrf_k": RRF_K,
+        "k": k,
+    }
     with get_conn() as conn:
-        rows = conn.execute(
-            HYBRID_SQL,
-            {
-                "q": query,
-                "qvec": Vector(qvec),
-                "company": company,
-                "cand": CANDIDATES_PER_RETRIEVER,
-                "rrf_k": RRF_K,
-                "k": k,
-            },
-        ).fetchall()
+        rows = conn.execute(HYBRID_SQL, params).fetchall()
+    log.info("search %r company=%s: %d results in %d ms", query, company, len(rows), (time.monotonic() - t0) * 1000)
     return [RetrievedChunk(*row) for row in rows]

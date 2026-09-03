@@ -1,7 +1,8 @@
 import io
 import json
-import tempfile
 from pathlib import Path
+
+from pypdf import PdfReader, PdfWriter
 
 from app.config import OCR_CACHE_DIR, settings
 from app.mistral import get_client
@@ -38,8 +39,6 @@ def _ocr_one(pdf_name: str, pdf_bytes: bytes) -> list[dict]:
 
 
 def _split_pdf(pdf_path: Path, parts: int) -> list[bytes]:
-    from pypdf import PdfReader, PdfWriter
-
     reader = PdfReader(pdf_path)
     total = len(reader.pages)
     per_part = -(-total // parts)  # ceil

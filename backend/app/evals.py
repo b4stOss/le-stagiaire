@@ -9,17 +9,25 @@ and to classify answer-vs-abstention on unanswerable questions.
 import json
 import re
 
-from app.agent import AgentAnswer
+from app.agent import AgentAnswer, content_to_text
 from app.config import settings
-from app.mistral import chat_complete
+from app.mistral import get_client
 
 # ---------------------------------------------------------------- numeric
 
 _SCALES = {
-    "billion": 1000.0, "billions": 1000.0, "bn": 1000.0,
-    "milliard": 1000.0, "milliards": 1000.0, "md": 1000.0,
-    "million": 1.0, "millions": 1.0, "mn": 1.0,
-    "thousand": 0.001, "milliers": 0.001, "k": 0.001,
+    "billion": 1000.0,
+    "billions": 1000.0,
+    "bn": 1000.0,
+    "milliard": 1000.0,
+    "milliards": 1000.0,
+    "md": 1000.0,
+    "million": 1.0,
+    "millions": 1.0,
+    "mn": 1.0,
+    "thousand": 0.001,
+    "milliers": 0.001,
+    "k": 0.001,
 }
 
 _NUM_RE = re.compile(r"\(?-?\d[\d\s  ,.]*\d|\(?-?\d\)?")
@@ -81,6 +89,7 @@ def grade_numeric(answer: str, gold: dict) -> bool:
 
 # ---------------------------------------------------------------- citations & retrieval
 
+
 def _pages_overlap(page_start: int, page_end: int, gold_pages: list[int], slack: int = 1) -> bool:
     return any(page_start - slack <= p <= page_end + slack for p in gold_pages)
 
@@ -105,15 +114,18 @@ def grade_retrieval_recall(result: AgentAnswer, gold_pages: list[dict]) -> bool:
 
 # ---------------------------------------------------------------- LLM judge
 
+
 def _judge_call(prompt: str) -> dict:
-    resp = chat_complete(
+    resp = get_client().chat.complete(
         model=settings.judge_model,
         messages=[{"role": "user", "content": prompt}],
         response_format={"type": "json_object"},
         temperature=0,
     )
-    content = resp.choices[0].message.content
-    return json.loads(content if isinstance(content, str) else content[0].text)
+    msg = resp.choices[0].message
+    if msg is None:
+        raise RuntimeError("judge returned no message")
+    return json.loads(content_to_text(msg.content))
 
 
 JUDGE_PROMPT = """\

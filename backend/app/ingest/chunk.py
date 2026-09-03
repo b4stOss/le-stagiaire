@@ -74,12 +74,21 @@ def _split_oversized(block: _Block) -> list[_Block]:
     buf: list[str] = []
     for line in lines:
         buf.append(line)
-        if sum(len(l) + 1 for l in buf) >= MAX_CHARS:
+        if sum(len(row) + 1 for row in buf) >= MAX_CHARS:
             parts.append(_Block(page=block.page, text="\n".join(buf)))
             buf = list(header_lines)  # repeat table header for readability
     if buf and "\n".join(buf).strip() != "\n".join(header_lines).strip():
         parts.append(_Block(page=block.page, text="\n".join(buf)))
     return parts
+
+
+def _enter_section(breadcrumb: dict[int, str], header: _Block) -> None:
+    """Record a header in the breadcrumb and drop any deeper levels left from the previous section."""
+    assert header.header_level is not None
+    title = HEADER_RE.sub(r"\2", header.text).strip()
+    breadcrumb[header.header_level] = title
+    for deeper in [k for k in breadcrumb if k > header.header_level]:
+        del breadcrumb[deeper]
 
 
 def chunk_pages(pages: list[dict]) -> list[Chunk]:
@@ -118,9 +127,7 @@ def chunk_pages(pages: list[dict]) -> list[Chunk]:
                 # new section: close the current chunk, update the breadcrumb
                 if block.header_level <= 2:
                     flush(carry_overlap=False)
-                breadcrumb[block.header_level] = HEADER_RE.match(block.text).group(2).strip()
-                for deeper in [k for k in breadcrumb if k > block.header_level]:
-                    del breadcrumb[deeper]
+                _enter_section(breadcrumb, block)
                 buf_section = section_path()
                 continue
             for part in _split_oversized(block):
